@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎮 Standoff 2 - Колесо фортуны</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎮</text></svg>">
+</head>
+<body>
+    <div class="container">
+        <!-- Шапка -->
+        <header class="header">
+            <div class="logo">
+                <div class="logo-icon">S2</div>
+                <h1>STANDOFF 2</h1>
+                <div class="game-mode">MINI APP</div>
+            </div>
+            
+            <div class="user-profile">
+                <div class="user-avatar" id="userAvatar">
+                    <i class="fas fa-user-secret"></i>
+                </div>
+                <div class="user-info">
+                    <div class="username" id="username">SO2 Agent</div>
+                    <div class="user-stats">
+                        <span class="stat-item">
+                            <i class="fas fa-coins"></i>
+                            <span id="coins">1000</span> GC
+                        </span>
+                        <span class="stat-item">
+                            <i class="fas fa-gem"></i>
+                            <span id="gems">50</span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Основное меню -->
+        <nav class="main-nav">
+            <button class="nav-btn active" data-tab="wheel">
+                <i class="fas fa-dharmachakra"></i>
+                Колесо фортуны
+            </button>
+            <button class="nav-btn" data-tab="cases">
+                <i class="fas fa-box-open"></i>
+                Кейсы
+            </button>
+            <button class="nav-btn" data-tab="inventory">
+                <i class="fas fa-archive"></i>
+                Инвентарь
+            </button>
+            <button class="nav-btn" data-tab="shop">
+                <i class="fas fa-shopping-cart"></i>
+                Магазин
+            </button>
+        </nav>
+
+        <!-- Содержимое вкладок -->
+        <main class="content">
+            <!-- Вкладка Колесо фортуны -->
+            <div class="tab-content active" id="wheel-tab">
+                <div class="wheel-section">
+                    <div class="wheel-container">
+                        <div class="wheel" id="wheel">
+                            <!-- Секторы колеса будут добавлены через JS -->
+                        </div>
+                        <div class="wheel-pointer">
+                            <i class="fas fa-caret-down"></i>
+                        </div>
+                        <div class="wheel-controls">
+                            <button class="btn-spin" id="spinBtn">
+                                <i class="fas fa-play"></i>
+                                Крутить за 100 GC
+                            </button>
+                            <div class="spin-info">
+                                <div class="spin-chance">
+                                    <i class="fas fa-bolt"></i>
+                                    Шансы: <span class="chance-value">Легендарный 1%</span>
+                                </div>
+                                <div class="free-spin">
+                                    <i class="fas fa-clock"></i>
+                                    Бесплатный spin через: <span id="timer">23:59</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="prizes-section">
+                        <h3><i class="fas fa-trophy"></i> Сегодняшние призы</h3>
+                        <div class="prizes-grid" id="prizesGrid">
+                            <!-- Призы будут добавлены через JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Вкладка Кейсы -->
+            <div class="tab-content" id="cases-tab">
+                <div class="cases-section">
+                    <div class="cases-filters">
+                        <button class="filter-btn active">Все</button>
+                        <button class="filter-btn">Обычные</button>
+                        <button class="filter-btn">Редкие</button>
+                        <button class="filter-btn">Эпические</button>
+                        <button class="filter-btn">Легендарные</button>
+                    </div>
+
+                    <div class="cases-grid" id="casesGrid">
+                        <!-- Кейсы будут добавлены через JS -->
+                    </div>
+
+                    <div class="case-opening" id="caseOpening">
+                        <div class="case-preview" id="casePreview">
+                            <div class="case-image">
+                                <i class="fas fa-box"></i>
+                            </div>
+                            <div class="case-info">
+                                <h3 class="case-name">Выберите кейс</h3>
+                                <p class="case-description">Откройте кейс и получите скин</p>
+                                <div class="case-price">
+                                    <i class="fas fa-coins"></i>
+                                    <span class="price">0</span> GC
+                                </div>
+                                <button class="btn-open-case" id="openCaseBtn" disabled>
+                                    <i class="fas fa-key"></i>
+                                    Открыть кейс
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="case-rewards">
+                            <h4>Возможные награды:</h4>
+                            <div class="rewards-list" id="rewardsList">
+                                <!-- Награды будут добавлены через JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Вкладка Инвентарь -->
+            <div class="tab-content" id="inventory-tab">
+                <div class="inventory-section">
+                    <div class="inventory-filters">
+                        <button class="inv-filter active">Все предметы</button>
+                        <button class="inv-filter">Оружие</button>
+                        <button class="inv-filter">Скины</button>
+                        <button class="inv-filter">Ножи</button>
+                        <button class="inv-filter">Перчатки</button>
+                    </div>
+
+                    <div class="inventory-stats">
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-box"></i>
+                            </div>
+                            <div class="stat-info">
+                                <div class="stat-label">Всего предметов</div>
+                                <div class="stat-value" id="totalItems">0</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-crown"></i>
+                            </div>
+                            <div class="stat-info">
+                                <div class="stat-label">Редкость</div>
+                                <div class="stat-value" id="rarityCount">Обычные: 0</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-chart-line"></i>
+                            </div>
+                            <div class="stat-info">
+                                <div class="stat-label">Общая стоимость</div>
+                                <div class="stat-value" id="totalValue">0 GC</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="inventory-grid" id="inventoryGrid">
+                        <!-- Инвентарь будет заполнен через JS -->
+                        <div class="empty-inventory">
+                            <i class="fas fa-box-open"></i>
+                            <p>Инвентарь пуст</p>
+                            <p>Откройте кейсы или крутите колесо!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Вкладка Магазин -->
+            <div class="tab-content" id="shop-tab">
+                <div class="shop-section">
+                    <div class="shop-balance">
+                        <div class="balance-card">
+                            <div class="balance-icon">
+                                <i class="fas fa-coins"></i>
+                            </div>
+                            <div class="balance-info">
+                                <div class="balance-label">Game Coins</div>
+                                <div class="balance-value" id="shopCoins">1000 GC</div>
+                            </div>
+                            <button class="btn-buy-coins" onclick="buyCoins(1000)">
+                                +1000 GC за 10 💎
+                            </button>
+                        </div>
+                        
+                        <div class="balance-card">
+                            <div class="balance-icon">
+                                <i class="fas fa-gem"></i>
+                            </div>
+                            <div class="balance-info">
+                                <div class="balance-label">Гемы</div>
+                                <div class="balance-value" id="shopGems">50 💎</div>
+                            </div>
+                            <button class="btn-buy-gems" onclick="showGemsShop()">
+                                Купить гемы
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="shop-items">
+                        <h3><i class="fas fa-fire"></i> Популярные товары</h3>
+                        <div class="shop-grid" id="shopGrid">
+                            <!-- Товары будут добавлены через JS -->
+                        </div>
+                    </div>
+
+                    <div class="daily-bonus">
+                        <h3><i class="fas fa-calendar-check"></i> Ежедневный бонус</h3>
+                        <div class="bonus-calendar" id="bonusCalendar">
+                            <!-- Календарь бонусов -->
+                        </div>
+                        <button class="btn-daily-bonus" id="dailyBonusBtn">
+                            <i class="fas fa-gift"></i>
+                            Получить сегодняшний бонус
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Футер с информацией -->
+        <footer class="footer">
+            <div class="footer-info">
+                <div class="server-status">
+                    <span class="status-indicator online"></span>
+                    <span>Сервер онлайн</span>
+                </div>
+                <div class="footer-text">
+                    Standoff 2 Mini App | Неофициальный проект
+                </div>
+                <div class="footer-version">
+                    v1.0 | Для развлечения
+                </div>
+            </div>
+            
+            <div class="action-buttons">
+                <button class="action-btn" onclick="saveGame()">
+                    <i class="fas fa-save"></i> Сохранить
+                </button>
+                <button class="action-btn" onclick="shareGame()">
+                    <i class="fas fa-share-alt"></i> Поделиться
+                </button>
+                <button class="action-btn" onclick="showStats()">
+                    <i class="fas fa-chart-bar"></i> Статистика
+                </button>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Модальные окна -->
+    <div class="modal" id="rewardModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">🎉 Поздравляем!</h2>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Содержимое модального окна -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn-modal" onclick="closeModal()">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="gemsShopModal">
+        <div class="modal-content shop-modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-gem"></i> Покупка гемов</h2>
+                <button class="modal-close" onclick="closeGemsShop()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="gems-packages">
+                    <!-- Пакеты гемов будут добавлены через JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Аудио для эффектов -->
+    <audio id="spinSound" src="https://assets.mixkit.co/sfx/preview/mixkit-slot-machine-wheel-spin-1382.mp3" preload="auto"></audio>
+    <audio id="winSound" src="https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3" preload="auto"></audio>
+    <audio id="caseOpenSound" src="https://assets.mixkit.co/sfx/preview/mixkit-unlock-game-notification-253.mp3" preload="auto"></audio>
+
+    <script src="script.js"></script>
+</body>
+</html>
