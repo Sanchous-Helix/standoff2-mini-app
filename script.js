@@ -1,116 +1,96 @@
-// Инициализация Telegram Web App
+// Initialize Telegram Web App
 let tg = window.Telegram?.WebApp;
 
-// Игровые данные
+// Game data
 let gameData = {
-    balance: 0, // Начальный баланс 0 G
+    balance: 0, // Gold balance
     totalSpins: 0,
     totalWon: 0,
     maxWin: 0,
     wins: 0,
-    lastFreeSpin: null, // Время последнего бесплатного спина
-    freeSpinAvailable: true // Бесплатный спин доступен
+    lastFreeSpin: null,
+    freeSpinAvailable: true
 };
 
-// Призы на рулетке (только G)
+// Wheel prizes (Gold only)
 const WHEEL_PRIZES = [
-    { value: 1, chance: 40, text: '1 G', color: '#5d6d7e' },       // Обычный
-    { value: 5, chance: 25, text: '5 G', color: '#2ecc71' },       // Необычный
-    { value: 10, chance: 15, text: '10 G', color: '#3498db' },     // Редкий
-    { value: 50, chance: 10, text: '50 G', color: '#9b59b6' },     // Эпический
-    { value: 100, chance: 7, text: '100 G', color: '#f39c12' },    // Легендарный
-    { value: 500, chance: 3, text: '500 G', color: '#e74c3c' }     // Джеко-пот
+    { value: 1, chance: 40, text: '1 G', color: '#5d6d7e', class: 'sector-1' },
+    { value: 5, chance: 25, text: '5 G', color: '#2ecc71', class: 'sector-2' },
+    { value: 10, chance: 15, text: '10 G', color: '#3498db', class: 'sector-3' },
+    { value: 50, chance: 10, text: '50 G', color: '#9b59b6', class: 'sector-4' },
+    { value: 100, chance: 7, text: '100 G', color: '#f39c12', class: 'sector-5' },
+    { value: 500, chance: 3, text: '500 G', color: '#e74c3c', class: 'sector-6' }
 ];
 
-// Стоимость обычного спина
+// Spin cost
 const SPIN_COST = 5;
 
-// Время ожидания бесплатного спина (4 часа в миллисекундах)
-const FREE_SPIN_COOLDOWN = 4 * 60 * 60 * 1000; // 4 часа
+// Free spin cooldown (4 hours in milliseconds)
+const FREE_SPIN_COOLDOWN = 4 * 60 * 60 * 1000;
 
-// Инициализация игры
+// Initialize game
 function initGame() {
-    console.log('🎡 Инициализация Golden Roulette...');
+    console.log('🎡 Initializing GoldBank Roulette...');
     
     if (tg) {
-        // Разворачиваем на весь экран
         tg.expand();
-        
-        // Получаем данные пользователя из Telegram
         loadTelegramUserData();
         
-        // Настраиваем haptic feedback
         if (tg.HapticFeedback) {
             window.haptic = tg.HapticFeedback;
         }
     }
     
-    // Загружаем сохраненную игру
     loadSavedGame();
-    
-    // Инициализируем рулетку
     initWheel();
-    
-    // Инициализируем отображение шансов
     initChancesDisplay();
-    
-    // Настраиваем кнопки
-    document.getElementById('spinBtn').addEventListener('click', () => spinWheel(false));
-    document.getElementById('freeSpinBtn').addEventListener('click', () => spinWheel(true));
-    
-    // Обновляем UI
+    setupEventListeners();
     updateUI();
+    startTimer();
     
-    // Запускаем таймер бесплатного спина
-    updateFreeSpinTimer();
-    setInterval(updateFreeSpinTimer, 1000);
-    
-    console.log('✅ Игра готова! Баланс:', gameData.balance + ' G');
+    console.log('✅ Game ready! Balance:', gameData.balance + ' G');
 }
 
-// Загрузка данных пользователя из Telegram
+// Load Telegram user data
 function loadTelegramUserData() {
     if (!tg || !tg.initDataUnsafe?.user) return;
     
     const user = tg.initDataUnsafe.user;
     
-    // Устанавливаем имя пользователя
     document.getElementById('username').textContent = 
         user.first_name || user.username || 'Игрок';
     
-    // Получаем аватарку пользователя
     if (user.photo_url) {
         const avatar = document.getElementById('userAvatar');
         avatar.innerHTML = `<img src="${user.photo_url}" alt="Avatar">`;
     }
 }
 
-// Загрузка сохраненной игры
+// Load saved game
 function loadSavedGame() {
     try {
-        const saved = localStorage.getItem('goldenRouletteSave');
+        const saved = localStorage.getItem('goldBankRouletteSave');
         if (saved) {
             const parsed = JSON.parse(saved);
             gameData = { ...gameData, ...parsed };
             
-            // Проверяем доступность бесплатного спина
             if (gameData.lastFreeSpin) {
                 const now = Date.now();
                 const timeSinceLastFreeSpin = now - gameData.lastFreeSpin;
                 gameData.freeSpinAvailable = timeSinceLastFreeSpin >= FREE_SPIN_COOLDOWN;
             }
             
-            console.log('🎮 Игра загружена из сохранения');
+            console.log('🎮 Game loaded from save');
         }
     } catch (e) {
-        console.error('❌ Ошибка загрузки:', e);
+        console.error('❌ Load error:', e);
     }
 }
 
-// Сохранение игры
+// Save game
 function saveGame() {
     try {
-        localStorage.setItem('goldenRouletteSave', JSON.stringify(gameData));
+        localStorage.setItem('goldBankRouletteSave', JSON.stringify(gameData));
         return true;
     } catch (e) {
         showNotification('❌ Ошибка сохранения');
@@ -118,7 +98,7 @@ function saveGame() {
     }
 }
 
-// Инициализация рулетки
+// Initialize wheel
 function initWheel() {
     const wheel = document.getElementById('wheel');
     wheel.innerHTML = '';
@@ -126,23 +106,14 @@ function initWheel() {
     const totalSectors = WHEEL_PRIZES.length;
     const sectorAngle = 360 / totalSectors;
     
-    // Создаем секторы рулетки
     WHEEL_PRIZES.forEach((prize, index) => {
         const sector = document.createElement('div');
-        sector.className = 'wheel-sector';
+        sector.className = `wheel-sector ${prize.class}`;
         sector.dataset.prize = prize.value;
         
-        // Устанавливаем позицию и цвет
         const rotateAngle = index * sectorAngle;
         sector.style.transform = `rotate(${rotateAngle}deg)`;
         
-        // Градиент для сектора
-        const hue = index * (360 / totalSectors);
-        sector.style.background = `linear-gradient(${rotateAngle + 90}deg, 
-            ${prize.color} 0%, 
-            ${darkenColor(prize.color, 30)} 100%)`;
-        
-        // Добавляем текст
         const span = document.createElement('span');
         span.innerHTML = prize.text;
         span.style.color = getContrastColor(prize.color);
@@ -152,7 +123,7 @@ function initWheel() {
     });
 }
 
-// Инициализация отображения шансов
+// Initialize chances display
 function initChancesDisplay() {
     const chancesList = document.getElementById('chancesList');
     chancesList.innerHTML = '';
@@ -161,76 +132,67 @@ function initChancesDisplay() {
         const chanceItem = document.createElement('div');
         chanceItem.className = 'chance-item';
         chanceItem.innerHTML = `
-            <span>${prize.text}</span>
-            <span style="color: gold;">${prize.chance}%</span>
+            <span class="chance-prize">${prize.text}</span>
+            <span class="chance-percent">${prize.chance}%</span>
         `;
         chancesList.appendChild(chanceItem);
     });
 }
 
-// Обновление UI
+// Setup event listeners
+function setupEventListeners() {
+    document.getElementById('spinBtn').addEventListener('click', () => spinWheel(false));
+    document.getElementById('freeSpinBtn').addEventListener('click', () => spinWheel(true));
+}
+
+// Update UI
 function updateUI() {
-    // Баланс
+    // Balance
     document.getElementById('balance').textContent = gameData.balance;
+    document.getElementById('goldAmount').textContent = gameData.balance + ' G';
     
-    // Статистика
+    // Stats
     document.getElementById('totalSpins').textContent = gameData.totalSpins;
     document.getElementById('totalWon').textContent = gameData.totalWon + ' G';
     document.getElementById('maxWin').textContent = gameData.maxWin + ' G';
     
-    // Расчет удачи (% выигрышных спинов)
-    const luck = gameData.totalSpins > 0 
+    const luckRate = gameData.totalSpins > 0 
         ? Math.round((gameData.wins / gameData.totalSpins) * 100) 
         : 0;
-    document.getElementById('luck').textContent = luck + '%';
+    document.getElementById('luckRate').textContent = luckRate + '%';
     
-    // Обновляем кнопку спина
+    // Update buttons
     updateSpinButton();
-    
-    // Обновляем кнопку бесплатного спина
     updateFreeSpinButton();
 }
 
-// Обновление кнопки спина
+// Update spin button
 function updateSpinButton() {
     const spinBtn = document.getElementById('spinBtn');
-    const canSpin = gameData.balance >= SPIN_COST;
-    
-    spinBtn.disabled = !canSpin;
-    
-    if (!canSpin) {
-        spinBtn.innerHTML = `
-            <i class="fas fa-lock"></i>
-            НЕДОСТАТОЧНО G
-        `;
-    }
+    spinBtn.disabled = gameData.balance < SPIN_COST;
 }
 
-// Обновление кнопки бесплатного спина
+// Update free spin button
 function updateFreeSpinButton() {
     const freeSpinBtn = document.getElementById('freeSpinBtn');
-    const timerElement = document.getElementById('freeSpinTimer');
-    
-    if (gameData.freeSpinAvailable) {
-        freeSpinBtn.disabled = false;
-        freeSpinBtn.innerHTML = `
-            <i class="fas fa-play"></i>
-            КРУТИТЬ БЕСПЛАТНО
-        `;
-        timerElement.textContent = 'Доступно сейчас';
-        timerElement.style.color = 'gold';
-    } else {
-        freeSpinBtn.disabled = true;
-        freeSpinBtn.innerHTML = `
-            <i class="fas fa-clock"></i>
-            ОЖИДАНИЕ...
-        `;
-    }
+    freeSpinBtn.disabled = !gameData.freeSpinAvailable;
 }
 
-// Обновление таймера бесплатного спина
+// Start timer for free spin
+function startTimer() {
+    updateFreeSpinTimer();
+    setInterval(updateFreeSpinTimer, 1000);
+}
+
+// Update free spin timer
 function updateFreeSpinTimer() {
-    if (!gameData.lastFreeSpin || gameData.freeSpinAvailable) return;
+    const timerElement = document.getElementById('freeSpinTimer');
+    
+    if (!gameData.lastFreeSpin || gameData.freeSpinAvailable) {
+        timerElement.textContent = 'Доступно сейчас';
+        timerElement.style.color = '#2ecc71';
+        return;
+    }
     
     const now = Date.now();
     const timeSinceLastFreeSpin = now - gameData.lastFreeSpin;
@@ -239,27 +201,27 @@ function updateFreeSpinTimer() {
     if (timeLeft <= 0) {
         gameData.freeSpinAvailable = true;
         updateFreeSpinButton();
-        showNotification('🎁 Бесплатный спин снова доступен!');
+        timerElement.textContent = 'Доступно сейчас';
+        timerElement.style.color = '#2ecc71';
+        showNotification('🎁 Бесплатный спин доступен!');
         return;
     }
     
-    // Форматируем оставшееся время
     const hours = Math.floor(timeLeft / (60 * 60 * 1000));
     const minutes = Math.floor((timeLeft % (60 * 60 * 1000)) / (60 * 1000));
     const seconds = Math.floor((timeLeft % (60 * 1000)) / 1000);
     
-    const timerElement = document.getElementById('freeSpinTimer');
-    timerElement.textContent = `Доступно через: ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    timerElement.textContent = 
+        `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     timerElement.style.color = '#ff4444';
 }
 
-// Вращение рулетки
+// Spin wheel
 let isSpinning = false;
 
 function spinWheel(isFree) {
     if (isSpinning) return;
     
-    // Проверяем условия
     if (!isFree && gameData.balance < SPIN_COST) {
         showNotification('❌ Недостаточно G для спина!');
         return;
@@ -272,51 +234,34 @@ function spinWheel(isFree) {
     
     isSpinning = true;
     
-    // Снимаем стоимость спина (если не бесплатный)
     if (!isFree) {
         gameData.balance -= SPIN_COST;
     } else {
-        // Обновляем время последнего бесплатного спина
         gameData.lastFreeSpin = Date.now();
         gameData.freeSpinAvailable = false;
     }
     
     gameData.totalSpins++;
     
-    // Обновляем UI
     updateUI();
-    
-    // Воспроизводим звук вращения
     playSound('spinSound');
     
-    // Получаем случайный приз
     const prize = getRandomPrize();
-    
-    // Анимация вращения рулетки
     const wheel = document.getElementById('wheel');
-    const spinBtn = document.getElementById('spinBtn');
-    const freeSpinBtn = document.getElementById('freeSpinBtn');
     
-    // Вычисляем угол остановки
     const prizeIndex = WHEEL_PRIZES.indexOf(prize);
     const sectorAngle = 360 / WHEEL_PRIZES.length;
     
-    // Рулетка вращается по часовой стрелке
-    // Делаем 5 полных оборотов + останавливаемся на призе
     const fullRotations = 5;
-    const stopAngle = fullRotations * 360 + (prizeIndex * sectorAngle) + Math.random() * sectorAngle;
+    const stopAngle = fullRotations * 360 + (prizeIndex * sectorAngle) + (Math.random() * sectorAngle);
     
-    // Сбрасываем трансформацию
     wheel.style.transition = 'none';
     wheel.style.transform = 'rotate(0deg)';
     
-    // Ждем кадр для сброса
     requestAnimationFrame(() => {
-        // Запускаем анимацию с плавным замедлением
         wheel.style.transition = 'transform 4s cubic-bezier(0.2, 0.8, 0.3, 1)';
         wheel.style.transform = `rotate(${stopAngle}deg)`;
         
-        // Показываем результат через 4 секунды
         setTimeout(() => {
             processSpinResult(prize, isFree);
             isSpinning = false;
@@ -326,7 +271,7 @@ function spinWheel(isFree) {
     });
 }
 
-// Получение случайного приза по шансам
+// Get random prize
 function getRandomPrize() {
     const totalChance = WHEEL_PRIZES.reduce((sum, prize) => sum + prize.chance, 0);
     let random = Math.random() * totalChance;
@@ -341,74 +286,65 @@ function getRandomPrize() {
     return WHEEL_PRIZES[0];
 }
 
-// Обработка результата спина
+// Process spin result
 function processSpinResult(prize, isFree) {
     const winAmount = prize.value;
     
-    // Добавляем выигрыш
     gameData.balance += winAmount;
     gameData.totalWon += winAmount;
     
-    // Считаем как выигрышный спин, если выиграли больше 1 G
     if (winAmount > 1) {
         gameData.wins++;
     }
     
-    // Обновляем максимальный выигрыш
     if (winAmount > gameData.maxWin) {
         gameData.maxWin = winAmount;
     }
     
-    // Показываем результат
-    if (winAmount >= 100) {
-        // Большой выигрыш
+    // Show result
+    let message = '';
+    
+    if (winAmount === 500) {
+        message = `🎉 ДЖЕКПОТ! Вы выиграли ${winAmount} G!`;
         playSound('winSound');
         showWinEffect();
-        
-        let message = '';
-        if (winAmount === 500) {
-            message = `🎉 ДЖЕКПОТ! Вы выиграли ${winAmount} G!`;
-        } else if (winAmount === 100) {
-            message = `💰 ОГРОМНЫЙ ВЫИГРЫШ! ${winAmount} G!`;
-        } else {
-            message = `🎊 Отлично! Выигрыш ${winAmount} G!`;
-        }
-        
-        showNotification(message + (isFree ? ' (Бесплатный спин!)' : ''));
-        
-        // Вибрация для больших выигрышей
-        if (window.haptic) {
-            if (winAmount === 500) {
-                window.haptic.notificationOccurred('success');
-            } else {
-                window.haptic.impactOccurred('heavy');
-            }
-        }
-    } else if (winAmount > 5) {
-        // Средний выигрыш
+    } else if (winAmount >= 100) {
+        message = `💰 ОГРОМНЫЙ ВЫИГРЫШ! ${winAmount} G!`;
         playSound('winSound');
-        showNotification(`🎯 Вы выиграли ${winAmount} G!` + (isFree ? ' (Бесплатный спин!)' : ''));
-        
-        if (window.haptic) {
-            window.haptic.impactOccurred('medium');
-        }
+        showWinEffect();
+    } else if (winAmount >= 50) {
+        message = `🎊 Отлично! Выигрыш ${winAmount} G!`;
+        playSound('winSound');
+    } else if (winAmount >= 10) {
+        message = `🎯 Хорошо! Выигрыш ${winAmount} G!`;
+        playSound('winSound');
+    } else if (winAmount >= 5) {
+        message = `👍 Неплохо! Выигрыш ${winAmount} G!`;
+        playSound('winSound');
     } else {
-        // Маленький выигрыш или проигрыш
-        if (winAmount > 1) {
-            playSound('winSound');
-            showNotification(`👍 Выигрыш ${winAmount} G` + (isFree ? ' (Бесплатный спин!)' : ''));
+        message = `😔 Выигрыш ${winAmount} G`;
+        playSound('loseSound');
+    }
+    
+    if (isFree) {
+        message += ' (Бесплатный спин!)';
+    }
+    
+    showNotification(message);
+    
+    // Haptic feedback
+    if (window.haptic) {
+        if (winAmount >= 100) {
+            window.haptic.impactOccurred('heavy');
+        } else if (winAmount >= 10) {
+            window.haptic.impactOccurred('medium');
         } else {
-            playSound('loseSound');
-            showNotification(`😔 Всего ${winAmount} G` + (isFree ? ' (Бесплатный спин!)' : ''));
-        }
-        
-        if (window.haptic) {
             window.haptic.impactOccurred('light');
         }
     }
 }
 
-// Показать эффект выигрыша
+// Show win effect
 function showWinEffect() {
     const effect = document.getElementById('winEffect');
     effect.style.display = 'block';
@@ -418,14 +354,13 @@ function showWinEffect() {
     }, 1000);
 }
 
-// Показать уведомление
+// Show notification
 function showNotification(message) {
     const notification = document.getElementById('notification');
     notification.textContent = message;
     notification.style.display = 'block';
     notification.style.animation = 'slideIn 0.3s ease';
     
-    // Автоскрытие через 3 секунды
     setTimeout(() => {
         notification.style.animation = 'slideOut 0.3s ease';
         setTimeout(() => {
@@ -434,47 +369,30 @@ function showNotification(message) {
     }, 3000);
 }
 
-// Воспроизведение звука
+// Play sound
 function playSound(soundId) {
     try {
         const sound = document.getElementById(soundId);
         if (sound) {
             sound.currentTime = 0;
-            sound.volume = 0.5;
-            sound.play().catch(e => console.log('Звук не воспроизведен:', e));
+            sound.volume = 0.3;
+            sound.play().catch(e => console.log('Sound error:', e));
         }
     } catch (e) {
-        // Игнорируем ошибки звука
+        // Ignore sound errors
     }
 }
 
-// Вспомогательные функции
-function darkenColor(color, percent) {
-    const num = parseInt(color.replace("#", ""), 16);
-    const amt = Math.round(2.55 * percent);
-    const R = (num >> 16) - amt;
-    const G = (num >> 8 & 0x00FF) - amt;
-    const B = (num & 0x0000FF) - amt;
-    
-    return "#" + (
-        0x1000000 +
-        (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 +
-        (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 +
-        (B < 255 ? B < 1 ? 0 : B : 255)
-    ).toString(16).slice(1);
-}
-
+// Helper function for contrast color
 function getContrastColor(hexcolor) {
     hexcolor = hexcolor.replace("#", "");
     const r = parseInt(hexcolor.substr(0, 2), 16);
     const g = parseInt(hexcolor.substr(2, 2), 16);
     const b = parseInt(hexcolor.substr(4, 2), 16);
     
-    // Формула яркости
     const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-    
     return brightness > 128 ? '#000000' : '#FFFFFF';
 }
 
-// Запуск игры при загрузке страницы
+// Initialize game when DOM is loaded
 document.addEventListener('DOMContentLoaded', initGame);
