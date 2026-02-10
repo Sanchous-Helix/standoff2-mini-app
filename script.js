@@ -110,6 +110,7 @@ function initWheel() {
         const sector = document.createElement('div');
         sector.className = `wheel-sector ${prize.class}`;
         sector.dataset.prize = prize.value;
+        sector.dataset.index = index;
         
         const rotateAngle = index * sectorAngle;
         sector.style.transform = `rotate(${rotateAngle}deg)`;
@@ -246,29 +247,65 @@ function spinWheel(isFree) {
     updateUI();
     playSound('spinSound');
     
+    // Get random prize BEFORE spinning
     const prize = getRandomPrize();
+    const prizeIndex = WHEEL_PRIZES.indexOf(prize);
+    
+    // Log for debugging
+    console.log(`🎯 Selected prize: ${prize.text}, index: ${prizeIndex}`);
+    
+    // Show the selected prize immediately (optional, for debugging)
+    // showNotification(`🎰 Выбран приз: ${prize.text}`);
+    
     const wheel = document.getElementById('wheel');
     
-    const prizeIndex = WHEEL_PRIZES.indexOf(prize);
-    const sectorAngle = 360 / WHEEL_PRIZES.length;
+    // Calculate stop position so pointer points to selected sector
+    const totalSectors = WHEEL_PRIZES.length;
+    const sectorAngle = 360 / totalSectors;
     
-    const fullRotations = 5;
-    const stopAngle = fullRotations * 360 + (prizeIndex * sectorAngle) + (Math.random() * sectorAngle);
+    // Pointer is at top (0 degrees), we need to rotate wheel so that
+    // the selected sector ends up at pointer position (just past the top)
     
+    // Each sector occupies sectorAngle degrees
+    // We want the selected sector to be centered at pointer
+    // Since pointer is at 0 degrees, we need to rotate the wheel
+    // so that selected sector's center is at 180 degrees (bottom)
+    // and then rotate back a little so it stops just past pointer
+    
+    const fullRotations = 5; // Number of full spins before stopping
+    const pointerOffset = -90; // Pointer is at top (0 degrees), but we want sector center at pointer
+    
+    // Calculate exact stop angle
+    // We want the wheel to stop with selected sector at pointer
+    // The calculation: rotate full circles + position sector at pointer - half sector to center it
+    const stopAngle = (fullRotations * 360) + 
+                      ((totalSectors - prizeIndex) * sectorAngle) + 
+                      (sectorAngle / 2) + 
+                      pointerOffset;
+    
+    // Reset wheel position
     wheel.style.transition = 'none';
     wheel.style.transform = 'rotate(0deg)';
     
-    requestAnimationFrame(() => {
-        wheel.style.transition = 'transform 4s cubic-bezier(0.2, 0.8, 0.3, 1)';
-        wheel.style.transform = `rotate(${stopAngle}deg)`;
+    // Force reflow
+    void wheel.offsetWidth;
+    
+    // Start spinning animation
+    wheel.style.transition = 'transform 4s cubic-bezier(0.2, 0.8, 0.3, 1)';
+    wheel.style.transform = `rotate(${stopAngle}deg)`;
+    
+    // Process result after spin completes
+    setTimeout(() => {
+        processSpinResult(prize, isFree);
+        isSpinning = false;
+        updateUI();
+        saveGame();
         
-        setTimeout(() => {
-            processSpinResult(prize, isFree);
-            isSpinning = false;
-            updateUI();
-            saveGame();
-        }, 4000);
-    });
+        // Debug: check which sector is at pointer
+        const finalRotation = stopAngle % 360;
+        const sectorAtPointer = Math.floor(((360 - finalRotation) % 360) / sectorAngle);
+        console.log(`📍 Final rotation: ${finalRotation.toFixed(1)}°, Sector at pointer: ${sectorAtPointer}, Expected: ${prizeIndex}`);
+    }, 4000);
 }
 
 // Get random prize
