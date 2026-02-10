@@ -1,151 +1,86 @@
 // Инициализация Telegram Web App
 let tg = window.Telegram?.WebApp;
+
+// Игровые данные
 let gameData = {
-    coins: 1000,
-    gems: 50,
-    inventory: [],
-    openedCases: 0,
-    wheelSpins: 0,
-    dailyBonus: {},
-    selectedCase: null,
-    achievements: []
+    balance: 1000, // GC
+    totalSpins: 0,
+    totalWon: 0,
+    maxWin: 0,
+    currentBet: 100,
+    wins: 0
 };
 
-// Конфигурация колеса фортуны
+// Призы на рулетке (только GC)
 const WHEEL_PRIZES = [
-    { type: 'coins', value: 100, rarity: 'common', color: '#5d6d7e', chance: 30 },
-    { type: 'coins', value: 500, rarity: 'uncommon', color: '#2ecc71', chance: 20 },
-    { type: 'gems', value: 10, rarity: 'rare', color: '#3498db', chance: 15 },
-    { type: 'gems', value: 25, rarity: 'epic', color: '#9b59b6', chance: 10 },
-    { type: 'skin', value: 'common_skin', rarity: 'common', color: '#5d6d7e', chance: 10 },
-    { type: 'skin', value: 'rare_skin', rarity: 'rare', color: '#3498db', chance: 8 },
-    { type: 'skin', value: 'epic_skin', rarity: 'epic', color: '#9b59b6', chance: 5 },
-    { type: 'skin', value: 'legendary_skin', rarity: 'legendary', color: '#f39c12', chance: 2 }
-];
-
-// Конфигурация кейсов
-const CASES = [
-    {
-        id: 'basic_case',
-        name: 'Базовый кейс',
-        description: 'Обычные скины и оружие',
-        price: 100,
-        rarity: 'common',
-        rewards: [
-            { type: 'skin', name: 'AK-47 | Стандарт', rarity: 'common', chance: 40 },
-            { type: 'skin', name: 'M4 | Стандарт', rarity: 'common', chance: 30 },
-            { type: 'skin', name: 'AWP | Стандарт', rarity: 'uncommon', chance: 15 },
-            { type: 'knife', name: 'Нож | Стандарт', rarity: 'rare', chance: 10 },
-            { type: 'gloves', name: 'Перчатки | Стандарт', rarity: 'epic', chance: 5 }
-        ]
-    },
-    {
-        id: 'rare_case',
-        name: 'Редкий кейс',
-        description: 'Шанс получить редкие предметы',
-        price: 500,
-        rarity: 'rare',
-        rewards: [
-            { type: 'skin', name: 'AK-47 | Красный тигр', rarity: 'uncommon', chance: 30 },
-            { type: 'skin', name: 'M4 | Дракон', rarity: 'rare', chance: 25 },
-            { type: 'skin', name: 'AWP | Азимов', rarity: 'rare', chance: 20 },
-            { type: 'knife', name: 'Нож | Бабочка', rarity: 'epic', chance: 15 },
-            { type: 'gloves', name: 'Перчатки | Спектр', rarity: 'legendary', chance: 10 }
-        ]
-    },
-    {
-        id: 'epic_case',
-        name: 'Эпический кейс',
-        description: 'Эпические и легендарные предметы',
-        price: 1000,
-        rarity: 'epic',
-        rewards: [
-            { type: 'skin', name: 'AK-47 | Огненный змей', rarity: 'rare', chance: 25 },
-            { type: 'skin', name: 'M4 | Небесный дракон', rarity: 'epic', chance: 20 },
-            { type: 'skin', name: 'AWP | Громовержец', rarity: 'epic', chance: 20 },
-            { type: 'knife', name: 'Нож | Коготь', rarity: 'legendary', chance: 15 },
-            { type: 'gloves', name: 'Перчатки | Дракон', rarity: 'ancient', chance: 10 },
-            { type: 'skin', name: 'Золотой AK-47', rarity: 'ancient', chance: 10 }
-        ]
-    },
-    {
-        id: 'legendary_case',
-        name: 'Легендарный кейс',
-        description: 'Только лучшие предметы',
-        price: 2500,
-        rarity: 'legendary',
-        rewards: [
-            { type: 'skin', name: 'AK-47 | Золотой феникс', rarity: 'epic', chance: 20 },
-            { type: 'skin', name: 'M4 | Небесный владыка', rarity: 'legendary', chance: 20 },
-            { type: 'skin', name: 'AWP | Повелитель драконов', rarity: 'legendary', chance: 15 },
-            { type: 'knife', name: 'Нож | Карамбит', rarity: 'ancient', chance: 15 },
-            { type: 'knife', name: 'Нож | Сапфир', rarity: 'ancient', chance: 10 },
-            { type: 'gloves', name: 'Перчатки | Повелитель', rarity: 'ancient', chance: 10 },
-            { type: 'skin', name: 'Золотой AWP', rarity: 'ancient', chance: 10 }
-        ]
-    }
-];
-
-// Конфигурация магазина
-const SHOP_ITEMS = [
-    { type: 'coins', amount: 1000, price: 10, gemPrice: 10 },
-    { type: 'coins', amount: 5000, price: 45, gemPrice: 45 },
-    { type: 'coins', amount: 10000, price: 80, gemPrice: 80 },
-    { type: 'gems', amount: 100, price: 99, gemPrice: 99 },
-    { type: 'gems', amount: 500, price: 399, gemPrice: 399 },
-    { type: 'gems', amount: 1000, price: 699, gemPrice: 699 }
+    { value: 1, color: '#5d6d7e', chance: 30, text: '50 GC' },    // Обычный
+    { value: 5, color: '#2ecc71', chance: 25, text: '100 GC' },   // Необычный
+    { value: 10, color: '#3498db', chance: 20, text: '200 GC' },   // Редкий
+    { value: 50, color: '#9b59b6', chance: 15, text: '500 GC' },   // Эпический
+    { value: 100, color: '#f39c12', chance: 8, text: '1000 GC' },  // Легендарный
+    { value: 500, color: '#e74c3c', chance: 2, text: '2000 GC' }   // Джеко-пот
 ];
 
 // Инициализация игры
 function initGame() {
-    console.log('🎮 Standoff 2 Mini App инициализация...');
+    console.log('🎡 Инициализация Golden Roulette...');
     
     if (tg) {
+        // Разворачиваем на весь экран
         tg.expand();
+        
+        // Настраиваем кнопку сохранения
         tg.MainButton.setText("💾 Сохранить и выйти");
         tg.MainButton.onClick(saveAndExit);
         tg.MainButton.show();
         
-        // Показываем информацию пользователя
-        const user = tg.initDataUnsafe?.user;
-        if (user) {
-            document.getElementById('username').textContent = 
-                user.first_name || user.username || 'SO2 Agent';
-        }
+        // Получаем данные пользователя из Telegram
+        loadTelegramUserData();
     }
     
     // Загружаем сохраненную игру
-    loadGame();
+    loadSavedGame();
     
-    // Инициализируем колесо
+    // Инициализируем рулетку
     initWheel();
     
-    // Инициализируем кейсы
-    initCases();
+    // Настраиваем кнопки ставок
+    initBetButtons();
     
-    // Инициализируем магазин
-    initShop();
-    
-    // Инициализируем инвентарь
-    updateInventory();
+    // Настраиваем кнопку спина
+    document.getElementById('spinBtn').addEventListener('click', spinWheel);
     
     // Обновляем UI
     updateUI();
     
-    // Запускаем таймер бесплатного спина
-    startFreeSpinTimer();
-    
-    console.log('✅ Игра инициализирована!');
+    console.log('✅ Игра готова!');
 }
 
-// Загрузка игры
-function loadGame() {
+// Загрузка данных пользователя из Telegram
+function loadTelegramUserData() {
+    if (!tg || !tg.initDataUnsafe?.user) return;
+    
+    const user = tg.initDataUnsafe.user;
+    
+    // Устанавливаем имя пользователя
+    document.getElementById('username').textContent = 
+        user.first_name || user.username || 'Игрок';
+    
+    // Получаем аватарку пользователя
+    if (user.photo_url) {
+        const avatar = document.getElementById('userAvatar');
+        avatar.innerHTML = `<img src="${user.photo_url}" alt="Avatar">`;
+    }
+}
+
+// Загрузка сохраненной игры
+function loadSavedGame() {
     try {
-        const saved = localStorage.getItem('standoff2_save');
+        const saved = localStorage.getItem('goldenRouletteSave');
         if (saved) {
             const parsed = JSON.parse(saved);
             gameData = { ...gameData, ...parsed };
-            console.log('🎮 Игра загружена');
+            console.log('🎮 Игра загружена из сохранения');
         }
     } catch (e) {
         console.error('❌ Ошибка загрузки:', e);
@@ -155,7 +90,7 @@ function loadGame() {
 // Сохранение игры
 function saveGame() {
     try {
-        localStorage.setItem('standoff2_save', JSON.stringify(gameData));
+        localStorage.setItem('goldenRouletteSave', JSON.stringify(gameData));
         showNotification('💾 Игра сохранена!');
         
         if (tg?.HapticFeedback) {
@@ -177,129 +112,136 @@ function saveAndExit() {
     }
 }
 
-// Обновление UI
-function updateUI() {
-    document.getElementById('coins').textContent = gameData.coins;
-    document.getElementById('gems').textContent = gameData.gems;
-    document.getElementById('shopCoins').textContent = gameData.coins + ' GC';
-    document.getElementById('shopGems').textContent = gameData.gems + ' 💎';
-    
-    // Обновляем кнопку спина
-    const spinBtn = document.getElementById('spinBtn');
-    spinBtn.disabled = gameData.coins < 100;
-    
-    // Обновляем кнопку открытия кейса
-    const openCaseBtn = document.getElementById('openCaseBtn');
-    if (gameData.selectedCase) {
-        const selectedCase = CASES.find(c => c.id === gameData.selectedCase);
-        openCaseBtn.disabled = gameData.coins < selectedCase.price;
-    }
-}
-
-// Инициализация колеса
+// Инициализация рулетки
 function initWheel() {
     const wheel = document.getElementById('wheel');
     wheel.innerHTML = '';
     
-    const sectorAngle = 360 / WHEEL_PRIZES.length;
+    const totalSectors = WHEEL_PRIZES.length;
+    const sectorAngle = 360 / totalSectors;
     
+    // Создаем секторы рулетки
     WHEEL_PRIZES.forEach((prize, index) => {
         const sector = document.createElement('div');
         sector.className = 'wheel-sector';
-        sector.style.transform = `rotate(${index * sectorAngle}deg)`;
+        
+        // Устанавливаем позицию и цвет
+        const rotateAngle = index * sectorAngle;
+        sector.style.transform = `rotate(${rotateAngle}deg)`;
         sector.style.background = prize.color;
         
-        const span = document.createElement('span');
-        if (prize.type === 'coins') {
-            span.innerHTML = `💰 ${prize.value}`;
-        } else if (prize.type === 'gems') {
-            span.innerHTML = `💎 ${prize.value}`;
-        } else {
-            span.innerHTML = `🎁 ${prize.rarity}`;
-        }
+        // Добавляем градиент для красоты
+        sector.style.background = `linear-gradient(${rotateAngle + 90}deg, 
+            ${prize.color} 0%, 
+            ${darkenColor(prize.color, 20)} 100%)`;
         
+        // Добавляем текст
+        const span = document.createElement('span');
+        span.innerHTML = prize.text;
+        span.style.color = getContrastColor(prize.color);
         sector.appendChild(span);
+        
         wheel.appendChild(sector);
     });
-    
-    // Инициализируем призы
-    initPrizes();
 }
 
-// Инициализация призов
-function initPrizes() {
-    const prizesGrid = document.getElementById('prizesGrid');
-    prizesGrid.innerHTML = '';
+// Инициализация кнопок ставок
+function initBetButtons() {
+    const betButtons = document.querySelectorAll('.bet-btn');
     
-    WHEEL_PRIZES.forEach(prize => {
-        const prizeItem = document.createElement('div');
-        prizeItem.className = 'prize-item';
-        
-        let icon, name;
-        if (prize.type === 'coins') {
-            icon = '💰';
-            name = `${prize.value} GC`;
-        } else if (prize.type === 'gems') {
-            icon = '💎';
-            name = `${prize.value} Гемов`;
-        } else {
-            icon = '🎁';
-            name = `${prize.rarity} Скин`;
-        }
-        
-        prizeItem.innerHTML = `
-            <div class="prize-icon">${icon}</div>
-            <div class="prize-name">${name}</div>
-            <div class="prize-chance">${prize.chance}%</div>
-        `;
-        
-        prizesGrid.appendChild(prizeItem);
+    betButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            // Убираем активный класс у всех кнопок
+            betButtons.forEach(b => b.classList.remove('active'));
+            
+            // Добавляем активный класс выбранной кнопке
+            this.classList.add('active');
+            
+            // Устанавливаем ставку
+            gameData.currentBet = parseInt(this.dataset.bet);
+            
+            // Обновляем состояние кнопки спина
+            updateSpinButton();
+        });
     });
 }
 
-// Вращение колеса
+// Обновление кнопки спина
+function updateSpinButton() {
+    const spinBtn = document.getElementById('spinBtn');
+    const canSpin = gameData.balance >= gameData.currentBet;
+    
+    spinBtn.disabled = !canSpin;
+    
+    if (canSpin) {
+        spinBtn.innerHTML = `
+            <i class="fas fa-play"></i>
+            Крутить за ${gameData.currentBet} GC
+        `;
+    } else {
+        spinBtn.innerHTML = `
+            <i class="fas fa-lock"></i>
+            Недостаточно GC
+        `;
+    }
+}
+
+// Вращение рулетки
 let isSpinning = false;
 
 function spinWheel() {
-    if (isSpinning || gameData.coins < 100) return;
+    if (isSpinning || gameData.balance < gameData.currentBet) return;
     
     isSpinning = true;
-    gameData.coins -= 100;
-    gameData.wheelSpins++;
     
+    // Снимаем ставку
+    gameData.balance -= gameData.currentBet;
+    gameData.totalSpins++;
+    
+    // Обновляем UI
     updateUI();
+    updateSpinButton();
     
-    // Воспроизводим звук
+    // Воспроизводим звук вращения
     playSound('spinSound');
     
-    // Анимация вращения
+    // Получаем случайный приз
+    const prize = getRandomPrize();
+    
+    // Анимация вращения рулетки
     const wheel = document.getElementById('wheel');
     const spinBtn = document.getElementById('spinBtn');
-    spinBtn.disabled = true;
-    
-    // Случайный приз
-    const randomPrize = getRandomPrize();
-    const prizeIndex = WHEEL_PRIZES.indexOf(randomPrize);
-    const sectorAngle = 360 / WHEEL_PRIZES.length;
     
     // Вычисляем угол остановки
-    const fullRotations = 5;
+    const prizeIndex = WHEEL_PRIZES.indexOf(prize);
+    const sectorAngle = 360 / WHEEL_PRIZES.length;
+    
+    // Рулетка вращается по часовой стрелке
+    // Делаем 10 полных оборотов + останавливаемся на призе
+    const fullRotations = 10; // 10 полных оборотов
     const stopAngle = fullRotations * 360 + (prizeIndex * sectorAngle) + (sectorAngle / 2);
     
-    // Анимация
-    wheel.style.transition = 'transform 4s cubic-bezier(0.33, 0, 0.67, 1)';
-    wheel.style.transform = `rotate(${stopAngle}deg)`;
+    // Сбрасываем трансформацию
+    wheel.style.transition = 'none';
+    wheel.style.transform = 'rotate(0deg)';
     
-    // Показываем результат через 4 секунды
-    setTimeout(() => {
-        givePrize(randomPrize);
-        isSpinning = false;
-        spinBtn.disabled = gameData.coins < 100;
-        saveGame();
-    }, 4000);
+    // Ждем кадр для сброса
+    requestAnimationFrame(() => {
+        // Запускаем анимацию с плавным замедлением
+        wheel.style.transition = 'transform 5s cubic-bezier(0.2, 0.8, 0.3, 1)';
+        wheel.style.transform = `rotate(${stopAngle}deg)`;
+        
+        // Показываем результат через 5 секунд
+        setTimeout(() => {
+            processSpinResult(prize);
+            isSpinning = false;
+            updateSpinButton();
+            saveGame();
+        }, 5000);
+    });
 }
 
-// Получение случайного приза
+// Получение случайного приза по шансам
 function getRandomPrize() {
     const totalChance = WHEEL_PRIZES.reduce((sum, prize) => sum + prize.chance, 0);
     let random = Math.random() * totalChance;
@@ -314,441 +256,130 @@ function getRandomPrize() {
     return WHEEL_PRIZES[0];
 }
 
-// Выдача приза
-function givePrize(prize) {
-    let message = '';
+// Обработка результата спина
+function processSpinResult(prize) {
+    const winAmount = prize.value;
+    const multiplier = winAmount / gameData.currentBet;
     
-    if (prize.type === 'coins') {
-        gameData.coins += prize.value;
-        message = `💰 Вы выиграли ${prize.value} GC!`;
-    } else if (prize.type === 'gems') {
-        gameData.gems += prize.value;
-        message = `💎 Вы выиграли ${prize.value} гемов!`;
-    } else {
-        const skin = {
-            id: Date.now(),
-            name: `${prize.rarity} Скин`,
-            type: 'skin',
-            rarity: prize.rarity,
-            value: getSkinValue(prize.rarity)
-        };
-        gameData.inventory.push(skin);
-        message = `🎁 Вы выиграли ${prize.rarity} скин!`;
+    // Добавляем выигрыш
+    gameData.balance += winAmount;
+    gameData.totalWon += winAmount;
+    gameData.wins += multiplier > 1 ? 1 : 0;
+    
+    // Обновляем максимальный выигрыш
+    if (winAmount > gameData.maxWin) {
+        gameData.maxWin = winAmount;
     }
-    
-    updateUI();
-    updateInventory();
-    playSound('winSound');
-    showRewardModal('🎉 Поздравляем!', message);
-    
-    // Проверяем достижения
-    checkAchievements();
-}
-
-// Инициализация кейсов
-function initCases() {
-    const casesGrid = document.getElementById('casesGrid');
-    casesGrid.innerHTML = '';
-    
-    CASES.forEach(caseItem => {
-        const caseElement = document.createElement('div');
-        caseElement.className = `case-item ${caseItem.rarity}`;
-        caseElement.dataset.id = caseItem.id;
-        
-        caseElement.innerHTML = `
-            <div class="case-image">
-                <i class="fas fa-box"></i>
-            </div>
-            <div class="case-name">${caseItem.name}</div>
-            <div class="case-rarity ${caseItem.rarity}">${getRarityName(caseItem.rarity)}</div>
-            <div class="case-price">
-                <i class="fas fa-coins"></i>
-                <span class="price">${caseItem.price}</span> GC
-            </div>
-        `;
-        
-        caseElement.addEventListener('click', () => selectCase(caseItem.id));
-        casesGrid.appendChild(caseElement);
-    });
-    
-    // Инициализируем награды для первого кейса
-    updateCaseRewards(CASES[0].id);
-}
-
-// Выбор кейса
-function selectCase(caseId) {
-    gameData.selectedCase = caseId;
-    
-    // Убираем выделение со всех кейсов
-    document.querySelectorAll('.case-item').forEach(item => {
-        item.classList.remove('active');
-    });
-    
-    // Выделяем выбранный кейс
-    const selectedElement = document.querySelector(`.case-item[data-id="${caseId}"]`);
-    if (selectedElement) {
-        selectedElement.classList.add('active');
-    }
-    
-    // Обновляем превью кейса
-    updateCasePreview(caseId);
-    
-    // Обновляем награды
-    updateCaseRewards(caseId);
-}
-
-// Обновление превью кейса
-function updateCasePreview(caseId) {
-    const caseItem = CASES.find(c => c.id === caseId);
-    if (!caseItem) return;
-    
-    const preview = document.getElementById('casePreview');
-    const openBtn = document.getElementById('openCaseBtn');
-    
-    preview.querySelector('.case-name').textContent = caseItem.name;
-    preview.querySelector('.case-description').textContent = caseItem.description;
-    preview.querySelector('.price').textContent = caseItem.price;
-    
-    openBtn.disabled = gameData.coins < caseItem.price;
-    openBtn.onclick = () => openCase(caseId);
-}
-
-// Обновление наград кейса
-function updateCaseRewards(caseId) {
-    const caseItem = CASES.find(c => c.id === caseId);
-    if (!caseItem) return;
-    
-    const rewardsList = document.getElementById('rewardsList');
-    rewardsList.innerHTML = '';
-    
-    caseItem.rewards.forEach(reward => {
-        const rewardItem = document.createElement('div');
-        rewardItem.className = `reward-item ${reward.rarity}`;
-        
-        let icon = '🎁';
-        if (reward.type === 'knife') icon = '🔪';
-        if (reward.type === 'gloves') icon = '🧤';
-        
-        rewardItem.innerHTML = `
-            <div>${icon}</div>
-            <div>${reward.name}</div>
-            <div class="reward-chance">${reward.chance}%</div>
-        `;
-        
-        rewardsList.appendChild(rewardItem);
-    });
-}
-
-// Открытие кейса
-function openCase(caseId) {
-    const caseItem = CASES.find(c => c.id === caseId);
-    if (!caseItem || gameData.coins < caseItem.price) return;
-    
-    gameData.coins -= caseItem.price;
-    gameData.openedCases++;
-    
-    updateUI();
-    
-    // Воспроизводим звук
-    playSound('caseOpenSound');
-    
-    // Получаем случайную награду
-    const reward = getRandomCaseReward(caseItem.rewards);
-    
-    // Добавляем в инвентарь
-    const inventoryItem = {
-        id: Date.now(),
-        name: reward.name,
-        type: reward.type,
-        rarity: reward.rarity,
-        value: getItemValue(reward.rarity, reward.type),
-        case: caseItem.name
-    };
-    
-    gameData.inventory.push(inventoryItem);
     
     // Показываем результат
-    updateInventory();
-    saveGame();
+    if (multiplier > 1) {
+        // Выигрыш
+        playSound('winSound');
+        showWinEffect();
+        
+        let message = '';
+        if (multiplier >= 20) {
+            message = `🎉 ДЖЕКПОТ! Вы выиграли ${winAmount} GC!`;
+        } else if (multiplier >= 5) {
+            message = `🎊 ОГРОМНЫЙ ВЫИГРЫШ! ${winAmount} GC!`;
+        } else if (multiplier >= 2) {
+            message = `💰 Отлично! Выигрыш ${winAmount} GC!`;
+        } else {
+            message = `🎯 Вы выиграли ${winAmount} GC!`;
+        }
+        
+        showNotification(message);
+        
+        // Вибрация для больших выигрышей
+        if (tg?.HapticFeedback) {
+            if (multiplier >= 20) {
+                tg.HapticFeedback.notificationOccurred('success');
+            } else if (multiplier >= 5) {
+                tg.HapticFeedback.impactOccurred('heavy');
+            } else {
+                tg.HapticFeedback.impactOccurred('medium');
+            }
+        }
+    } else {
+        // Проигрыш
+        playSound('loseSound');
+        showNotification(`😔 Не повезло... Выигрыш ${winAmount} GC`);
+        
+        if (tg?.HapticFeedback) {
+            tg.HapticFeedback.impactOccurred('light');
+        }
+    }
     
-    let rewardIcon = '🎁';
-    if (reward.type === 'knife') rewardIcon = '🔪';
-    if (reward.type === 'gloves') rewardIcon = '🧤';
-    
-    showRewardModal(
-        '🎊 Кейс открыт!',
-        `${rewardIcon} Вы получили: <br><strong>${reward.name}</strong><br><span class="${reward.rarity}">${getRarityName(reward.rarity)}</span>`
-    );
+    // Обновляем UI
+    updateUI();
     
     // Проверяем достижения
     checkAchievements();
 }
 
-// Получение случайной награды из кейса
-function getRandomCaseReward(rewards) {
-    const totalChance = rewards.reduce((sum, reward) => sum + reward.chance, 0);
-    let random = Math.random() * totalChance;
+// Показать эффект выигрыша
+function showWinEffect() {
+    const effect = document.createElement('div');
+    effect.className = 'win-effect';
+    document.body.appendChild(effect);
     
-    for (const reward of rewards) {
-        if (random < reward.chance) {
-            return reward;
-        }
-        random -= reward.chance;
-    }
-    
-    return rewards[0];
+    setTimeout(() => {
+        effect.remove();
+    }, 1000);
 }
 
-// Инициализация магазина
-function initShop() {
-    const shopGrid = document.getElementById('shopGrid');
-    shopGrid.innerHTML = '';
+// Обновление UI
+function updateUI() {
+    // Баланс
+    document.getElementById('balance').textContent = gameData.balance;
     
-    SHOP_ITEMS.forEach(item => {
-        const shopItem = document.createElement('div');
-        shopItem.className = 'case-item';
-        
-        let icon = item.type === 'coins' ? '💰' : '💎';
-        let name = item.type === 'coins' ? `${item.amount} GC` : `${item.amount} Гемов`;
-        
-        shopItem.innerHTML = `
-            <div class="case-image">
-                <i class="fas ${item.type === 'coins' ? 'fa-coins' : 'fa-gem'}"></i>
-            </div>
-            <div class="case-name">${name}</div>
-            <div class="case-price">
-                <i class="fas fa-gem"></i>
-                <span class="price">${item.gemPrice}</span> 💎
-            </div>
-            <button class="btn-open-case" style="margin-top: 10px;" onclick="buyShopItem(${item.amount}, '${item.type}', ${item.gemPrice})">
-                Купить
-            </button>
-        `;
-        
-        shopGrid.appendChild(shopItem);
-    });
-}
-
-// Покупка в магазине
-function buyShopItem(amount, type, price) {
-    if (gameData.gems < price) {
-        showNotification('❌ Недостаточно гемов!');
-        return;
-    }
+    // Статистика
+    document.getElementById('totalSpins').textContent = gameData.totalSpins;
+    document.getElementById('totalWon').textContent = gameData.totalWon + ' GC';
+    document.getElementById('maxWin').textContent = gameData.maxWin + ' GC';
     
-    gameData.gems -= price;
+    // Расчет удачи (% выигрышных спинов)
+    const luck = gameData.totalSpins > 0 
+        ? Math.round((gameData.wins / gameData.totalSpins) * 100) 
+        : 0;
+    document.getElementById('luck').textContent = luck + '%';
     
-    if (type === 'coins') {
-        gameData.coins += amount;
-        showNotification(`✅ Куплено ${amount} GC!`);
-    } else {
-        gameData.gems += amount;
-        showNotification(`✅ Куплено ${amount} гемов!`);
-    }
-    
-    updateUI();
-    saveGame();
-}
-
-// Покупка гемов
-function showGemsShop() {
-    const modal = document.getElementById('gemsShopModal');
-    const packages = modal.querySelector('.gems-packages');
-    
-    packages.innerHTML = `
-        <div class="gems-package" onclick="buyGems(100, 99)">
-            <h3>100 💎</h3>
-            <p>99 ₽</p>
-        </div>
-        <div class="gems-package" onclick="buyGems(500, 399)">
-            <h3>500 💎</h3>
-            <p>399 ₽</p>
-        </div>
-        <div class="gems-package" onclick="buyGems(1000, 699)">
-            <h3>1000 💎</h3>
-            <p>699 ₽</p>
-        </div>
-        <div class="gems-package" onclick="buyGems(5000, 2999)">
-            <h3>5000 💎</h3>
-            <p>2999 ₽</p>
-        </div>
-    `;
-    
-    modal.classList.add('active');
-}
-
-function buyGems(amount, price) {
-    showNotification(`💎 +${amount} гемов добавлено! (Демо-версия)`);
-    gameData.gems += amount;
-    updateUI();
-    saveGame();
-    closeGemsShop();
-}
-
-function closeGemsShop() {
-    document.getElementById('gemsShopModal').classList.remove('active');
-}
-
-// Обновление инвентаря
-function updateInventory() {
-    const inventoryGrid = document.getElementById('inventoryGrid');
-    const totalItems = document.getElementById('totalItems');
-    const totalValue = document.getElementById('totalValue');
-    
-    // Подсчитываем статистику
-    const rarityCount = {
-        common: 0,
-        uncommon: 0,
-        rare: 0,
-        epic: 0,
-        legendary: 0,
-        ancient: 0
-    };
-    
-    let totalWorth = 0;
-    
-    gameData.inventory.forEach(item => {
-        rarityCount[item.rarity]++;
-        totalWorth += item.value || 0;
-    });
-    
-    // Обновляем статистику
-    totalItems.textContent = gameData.inventory.length;
-    totalValue.textContent = totalWorth + ' GC';
-    
-    document.getElementById('rarityCount').innerHTML = `
-        <div>Обычные: ${rarityCount.common}</div>
-        <div>Редкие: ${rarityCount.rare}</div>
-        <div>Эпические: ${rarityCount.epic}</div>
-    `;
-    
-    // Обновляем сетку инвентаря
-    if (gameData.inventory.length === 0) {
-        inventoryGrid.innerHTML = `
-            <div class="empty-inventory">
-                <i class="fas fa-box-open"></i>
-                <p>Инвентарь пуст</p>
-                <p>Откройте кейсы или крутите колесо!</p>
-            </div>
-        `;
-        return;
-    }
-    
-    inventoryGrid.innerHTML = '';
-    
-    gameData.inventory.forEach(item => {
-        const itemElement = document.createElement('div');
-        itemElement.className = 'inventory-item';
-        
-        let icon = '🎁';
-        if (item.type === 'knife') icon = '🔪';
-        if (item.type === 'gloves') icon = '🧤';
-        if (item.type === 'skin') icon = '🔫';
-        
-        itemElement.innerHTML = `
-            <div class="item-rarity ${item.rarity}">${getRarityShort(item.rarity)}</div>
-            <div style="font-size: 2em; margin-bottom: 10px;">${icon}</div>
-            <div style="font-weight: bold; margin-bottom: 5px;">${item.name}</div>
-            <div class="${item.rarity}" style="font-size: 0.9em; margin-bottom: 5px;">${getRarityName(item.rarity)}</div>
-            <div style="font-size: 0.8em; opacity: 0.8;">${item.value || 0} GC</div>
-        `;
-        
-        inventoryGrid.appendChild(itemElement);
-    });
+    // Обновляем кнопку спина
+    updateSpinButton();
 }
 
 // Проверка достижений
 function checkAchievements() {
+    // Простая система достижений
     const achievements = [
-        { id: 'first_spin', condition: gameData.wheelSpins >= 1, name: 'Первое вращение' },
-        { id: 'spin_master', condition: gameData.wheelSpins >= 10, name: 'Мастер колеса' },
-        { id: 'first_case', condition: gameData.openedCases >= 1, name: 'Первый кейс' },
-        { id: 'case_opener', condition: gameData.openedCases >= 5, name: 'Коллекционер' },
-        { id: 'rich_player', condition: gameData.coins >= 10000, name: 'Богатый игрок' },
-        { id: 'gem_king', condition: gameData.gems >= 1000, name: 'Король гемов' }
+        { condition: gameData.totalSpins >= 10, message: '🎯 Первые 10 спинов!' },
+        { condition: gameData.totalSpins >= 50, message: '🎯 50 спинов! Вы опытный игрок!' },
+        { condition: gameData.maxWin >= 1000, message: '💰 Крупный выигрыш!' },
+        { condition: gameData.maxWin >= 2000, message: '💰 ДЖЕКПОТ достижение!' },
+        { condition: gameData.balance >= 5000, message: '🏦 Богатый игрок!' }
     ];
     
     achievements.forEach(ach => {
-        if (ach.condition && !gameData.achievements.includes(ach.id)) {
-            gameData.achievements.push(ach.id);
-            showNotification(`🏆 Достижение: ${ach.name}!`);
-            
-            if (tg?.HapticFeedback) {
-                tg.HapticFeedback.notificationOccurred('success');
-            }
+        if (ach.condition) {
+            // Можно добавить систему флагов, чтобы не показывать повторно
+            showNotification(ach.message);
         }
     });
 }
 
-// Таймер бесплатного спина
-let freeSpinTimer = null;
-
-function startFreeSpinTimer() {
-    clearInterval(freeSpinTimer);
-    
-    function updateTimer() {
-        const now = new Date();
-        const tomorrow = new Date(now);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        tomorrow.setHours(0, 0, 0, 0);
-        
-        const diff = tomorrow - now;
-        const hours = Math.floor(diff / (1000 * 60 * 60));
-        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-        
-        document.getElementById('timer').textContent = 
-            `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-    }
-    
-    updateTimer();
-    freeSpinTimer = setInterval(updateTimer, 1000);
-}
-
-// Показ модального окна с наградой
-function showRewardModal(title, message) {
-    document.getElementById('modalTitle').textContent = title;
-    document.getElementById('modalBody').innerHTML = message;
-    document.getElementById('rewardModal').classList.add('active');
-    
-    // Автозакрытие через 5 секунд
-    setTimeout(() => {
-        if (document.getElementById('rewardModal').classList.contains('active')) {
-            closeModal();
-        }
-    }, 5000);
-}
-
-function closeModal() {
-    document.getElementById('rewardModal').classList.remove('active');
-}
-
 // Показать уведомление
 function showNotification(message) {
-    // Создаем элемент уведомления
-    const notification = document.createElement('div');
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: rgba(0, 0, 0, 0.9);
-        color: white;
-        padding: 15px 20px;
-        border-radius: 10px;
-        z-index: 1000;
-        animation: slideIn 0.3s ease;
-        max-width: 300px;
-        border-left: 4px solid var(--so2-highlight);
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
-    `;
+    const notification = document.getElementById('notification');
+    notification.textContent = message;
+    notification.style.display = 'block';
+    notification.style.animation = 'slideIn 0.3s ease';
     
-    notification.innerHTML = message;
-    document.body.appendChild(notification);
-    
-    // Удаляем через 3 секунды
+    // Автоскрытие через 3 секунды
     setTimeout(() => {
         notification.style.animation = 'slideOut 0.3s ease';
-        setTimeout(() => notification.remove(), 300);
+        setTimeout(() => {
+            notification.style.display = 'none';
+        }, 300);
     }, 3000);
 }
 
@@ -758,6 +389,7 @@ function playSound(soundId) {
         const sound = document.getElementById(soundId);
         if (sound) {
             sound.currentTime = 0;
+            sound.volume = 0.5;
             sound.play().catch(e => console.log('Звук не воспроизведен:', e));
         }
     } catch (e) {
@@ -766,123 +398,32 @@ function playSound(soundId) {
 }
 
 // Вспомогательные функции
-function getRarityName(rarity) {
-    const names = {
-        common: 'Обычный',
-        uncommon: 'Необычный',
-        rare: 'Редкий',
-        epic: 'Эпический',
-        legendary: 'Легендарный',
-        ancient: 'Древний'
-    };
-    return names[rarity] || rarity;
-}
-
-function getRarityShort(rarity) {
-    const shorts = {
-        common: 'C',
-        uncommon: 'U',
-        rare: 'R',
-        epic: 'E',
-        legendary: 'L',
-        ancient: 'A'
-    };
-    return shorts[rarity] || rarity[0].toUpperCase();
-}
-
-function getSkinValue(rarity) {
-    const values = {
-        common: 100,
-        uncommon: 500,
-        rare: 2000,
-        epic: 5000,
-        legendary: 10000,
-        ancient: 25000
-    };
-    return values[rarity] || 0;
-}
-
-function getItemValue(rarity, type) {
-    let value = getSkinValue(rarity);
-    if (type === 'knife') value *= 10;
-    if (type === 'gloves') value *= 5;
-    return value;
-}
-
-// Поделиться игрой
-function shareGame() {
-    const shareText = `🎮 Я играю в Standoff 2 Mini App! Уже ${gameData.coins} GC и ${gameData.inventory.length} предметов!`;
+function darkenColor(color, percent) {
+    const num = parseInt(color.replace("#", ""), 16);
+    const amt = Math.round(2.55 * percent);
+    const R = (num >> 16) - amt;
+    const G = (num >> 8 & 0x00FF) - amt;
+    const B = (num & 0x0000FF) - amt;
     
-    if (tg?.shareMessage) {
-        tg.shareMessage(shareText);
-    } else if (navigator.share) {
-        navigator.share({
-            title: 'Standoff 2 Mini App',
-            text: shareText,
-            url: window.location.href
-        });
-    } else {
-        navigator.clipboard.writeText(shareText).then(() => {
-            showNotification('📋 Текст скопирован в буфер обмена!');
-        });
-    }
+    return "#" + (
+        0x1000000 +
+        (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 +
+        (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 +
+        (B < 255 ? B < 1 ? 0 : B : 255)
+    ).toString(16).slice(1);
 }
 
-// Показать статистику
-function showStats() {
-    const stats = `
-        📊 <b>Статистика игрока:</b><br><br>
-        💰 Game Coins: ${gameData.coins}<br>
-        💎 Гемов: ${gameData.gems}<br>
-        🎁 Предметов: ${gameData.inventory.length}<br>
-        🎯 Колесо: ${gameData.wheelSpins} раз<br>
-        📦 Кейсов: ${gameData.openedCases} открыто<br>
-        🏆 Достижений: ${gameData.achievements.length}<br><br>
-        <small>Продолжайте в том же духе!</small>
-    `;
+function getContrastColor(hexcolor) {
+    hexcolor = hexcolor.replace("#", "");
+    const r = parseInt(hexcolor.substr(0, 2), 16);
+    const g = parseInt(hexcolor.substr(2, 2), 16);
+    const b = parseInt(hexcolor.substr(4, 2), 16);
     
-    showRewardModal('📊 Статистика', stats);
+    // Формула яркости
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+    
+    return brightness > 128 ? '#000000' : '#FFFFFF';
 }
 
-// Навигация по вкладкам
-document.addEventListener('DOMContentLoaded', function() {
-    // Переключение вкладок
-    document.querySelectorAll('.nav-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const tab = this.dataset.tab;
-            
-            // Убираем активный класс у всех кнопок
-            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-            // Добавляем активный класс текущей кнопке
-            this.classList.add('active');
-            
-            // Скрываем все вкладки
-            document.querySelectorAll('.tab-content').forEach(content => {
-                content.classList.remove('active');
-            });
-            
-            // Показываем выбранную вкладку
-            document.getElementById(`${tab}-tab`).classList.add('active');
-        });
-    });
-    
-    // Назначаем обработчик кнопки спина
-    document.getElementById('spinBtn').addEventListener('click', spinWheel);
-    
-    // Инициализируем игру
-    initGame();
-    
-    // Добавляем стили для анимаций
-    const style = document.createElement('style');
-    style.textContent = `
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-        @keyframes slideOut {
-            from { transform: translateX(0); opacity: 1; }
-            to { transform: translateX(100%); opacity: 0; }
-        }
-    `;
-    document.head.appendChild(style);
-});
+// Запуск игры при загрузке страницы
+document.addEventListener('DOMContentLoaded', initGame);
