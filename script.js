@@ -3,22 +3,41 @@ const tg = window.Telegram.WebApp;
 tg.ready();
 tg.expand();
 
-// ============ КОНФИГУРАЦИЯ ============
+// ============ КОНФИГУРАЦИЯ - ИСПРАВЛЕНО ============
 // ПОРЯДОК: ПО ЧАСОВОЙ СТРЕЛКЕ ОТ ВЕРХА (0°)
 const SECTORS = [
-    { value: 0, color: '#e74c3c', label: '0' },     // 0°   (верх)
-    { value: 5, color: '#e67e22', label: '5' },     // 45°
-    { value: 10, color: '#f1c40f', label: '10' },   // 90°
-    { value: 15, color: '#2ecc71', label: '15' },   // 135°
-    { value: 25, color: '#3498db', label: '25' },   // 180°
-    { value: 50, color: '#9b59b6', label: '50' },   // 225°
-    { value: 100, color: '#e84342', label: '100' }, // 270°
-    { value: 250, color: '#c0392b', label: '250' }  // 315°
+    { value: 250, color: '#c0392b', label: '250' }, // 0°   (ВЕРХ) - ДЖЕКПОТ
+    { value: 100, color: '#e84342', label: '100' }, // 45°
+    { value: 50, color: '#9b59b6', label: '50' },   // 90°
+    { value: 25, color: '#3498db', label: '25' },   // 135°
+    { value: 15, color: '#2ecc71', label: '15' },   // 180°
+    { value: 10, color: '#f1c40f', label: '10' },   // 225°
+    { value: 5, color: '#e67e22', label: '5' },     // 270°
+    { value: 0, color: '#e74c3c', label: '0' }      // 315°
 ];
 
+// Шансы в ТОЧНОМ соответствии с порядком секторов
 const CHANCES = {
-    free: [70.89, 15, 7.5, 4, 1.8, 0.7, 0.1, 0.01],
-    paid: [50, 17.4, 15, 10, 5, 2, 0.5, 0.1]
+    free: [
+        0.01,   // 250 G — 0.01% (верх)
+        0.1,    // 100 G — 0.1%
+        0.7,    // 50 G  — 0.7%
+        1.8,    // 25 G  — 1.8%
+        4,      // 15 G  — 4%
+        7.5,    // 10 G  — 7.5%
+        15,     // 5 G   — 15%
+        70.89   // 0 G   — 70.89% (низ)
+    ],
+    paid: [
+        0.1,    // 250 G — 0.1%  (верх)
+        0.5,    // 100 G — 0.5%
+        2,      // 50 G  — 2%
+        5,      // 25 G  — 5%
+        10,     // 15 G  — 10%
+        15,     // 10 G  — 15%
+        17.4,   // 5 G   — 17.4%
+        50      // 0 G   — 50%   (низ)
+    ]
 };
 
 const SPIN_COST = 10;
@@ -52,7 +71,6 @@ const freeTimer = document.getElementById('freeTimer');
 userNameEl.textContent = user.first_name + (user.last_name ? ' ' + user.last_name : '');
 userAvatar.src = user.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.first_name)}&background=ffd700&color=000&size=128`;
 
-// Загрузка сохранённых данных
 const savedBalance = localStorage.getItem(`balance_${user.id}`);
 const savedLastFreeSpin = localStorage.getItem(`lastFreeSpin_${user.id}`);
 
@@ -78,7 +96,6 @@ function drawWheel(rotationAngle = 0) {
         const startAngle = i * anglePerSector + rotationAngle;
         const endAngle = startAngle + anglePerSector;
         
-        // Рисуем сектор
         ctx.beginPath();
         ctx.moveTo(centerX, centerY);
         ctx.arc(centerX, centerY, radius, startAngle, endAngle);
@@ -91,7 +108,6 @@ function drawWheel(rotationAngle = 0) {
         ctx.lineWidth = 2;
         ctx.stroke();
         
-        // Текст
         ctx.save();
         ctx.translate(centerX, centerY);
         ctx.rotate(startAngle + anglePerSector / 2);
@@ -105,7 +121,6 @@ function drawWheel(rotationAngle = 0) {
         ctx.restore();
     }
     
-    // Центральный круг
     ctx.beginPath();
     ctx.arc(centerX, centerY, 20, 0, Math.PI * 2);
     ctx.fillStyle = '#ffd700';
@@ -127,7 +142,7 @@ function getWinIndex(mode) {
             return i;
         }
     }
-    return 0;
+    return 7; // 0G по умолчанию
 }
 
 // ============ АНИМАЦИЯ ВРАЩЕНИЯ ============
@@ -140,16 +155,12 @@ function spinWheel(targetIndex) {
         
         isSpinning = true;
         
-        // ЦЕЛЕВОЙ УГОЛ: указатель смотрит на ВЕРХ (0°)
-        // Нам нужно, чтобы верхняя точка указывала на ЦЕНТР целевого сектора
-        // Центр сектора: i * 45° + 22.5°
+        // Целевой угол: указатель на ВЕРХУ (0°) должен указывать на ЦЕНТР целевого сектора
         const targetAngle = (targetIndex * 45 + 22.5) * Math.PI / 180;
         
-        // Добавляем обороты
         const spins = 8;
         const startAngle = currentRotation;
         
-        // Вычисляем дельту
         let deltaAngle = (spins * Math.PI * 2) + targetAngle;
         deltaAngle = deltaAngle - (currentRotation % (Math.PI * 2));
         const finalAngle = currentRotation + deltaAngle;
@@ -205,16 +216,13 @@ async function handleSpin(mode) {
         updateBalanceUI();
     }
     
-    // ВЫБИРАЕМ ВЫИГРЫШ
     const winIndex = getWinIndex(mode);
     const winAmount = SECTORS[winIndex].value;
     
     resultDisplay.innerHTML = '🎰 Крутим...';
     
-    // КРУТИМ К ВЫИГРЫШУ
     await spinWheel(winIndex);
     
-    // НАЧИСЛЯЕМ
     balance += winAmount;
     updateBalanceUI();
     
@@ -223,7 +231,6 @@ async function handleSpin(mode) {
         localStorage.setItem(`lastFreeSpin_${user.id}`, lastFreeSpin);
     }
     
-    // ПОКАЗЫВАЕМ РЕЗУЛЬТАТ
     if (winAmount >= 100) {
         resultDisplay.innerHTML = `🔥 ДЖЕКПОТ! +${winAmount}G 🔥`;
         tg.HapticFeedback.impactOccurred('heavy');
@@ -238,7 +245,6 @@ async function handleSpin(mode) {
         tg.HapticFeedback.notificationOccurred('error');
     }
     
-    // РАЗБЛОКИРУЕМ КНОПКИ
     if (!isSpinning) {
         paidSpinBtn.disabled = balance < SPIN_COST;
         checkFreeSpin();
@@ -298,16 +304,13 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     });
 });
 
-// Таймер
 setInterval(() => {
     if (!isSpinning) checkFreeSpin();
 }, 60000);
 
-// Старт
 drawWheel(currentRotation);
 paidSpinBtn.disabled = balance < SPIN_COST;
 
-// Очистка
 window.addEventListener('beforeunload', () => {
     if (animationFrame) cancelAnimationFrame(animationFrame);
 });
