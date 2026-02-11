@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>🎡 GoldBank Roulette</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -28,9 +28,9 @@
 
         <!-- Gold Display -->
         <div class="gold-section">
-            <div class="gold-title">Ваш баланс</div>
+            <div class="gold-title">ВАШ БАЛАНС</div>
             <div class="gold-amount" id="goldAmount">100 G</div>
-            <div class="gold-label">Gold</div>
+            <div class="gold-label">GOLD</div>
         </div>
 
         <!-- Free Spin -->
@@ -51,9 +51,8 @@
             <h2 class="wheel-title">GOLD ROULETTE</h2>
             
             <div class="wheel-container">
-                <div class="wheel" id="wheel">
-                    <!-- Сектора генерируются JavaScript -->
-                </div>
+                <!-- Колесо будет заполнено скриптом -->
+                <div class="wheel" id="wheel"></div>
                 <div class="wheel-center"></div>
                 <div class="wheel-pointer">
                     <i class="fas fa-caret-down"></i>
@@ -63,18 +62,18 @@
             <div class="controls">
                 <button class="spin-btn" id="spinBtn">
                     <i class="fas fa-play"></i>
-                    КРУТИТЬ РУЛЕТКУ
+                    КРУТИТЬ ЗА 10 G
                 </button>
                 <div class="spin-cost">
                     <i class="fas fa-coins"></i>
-                    Стоимость: <span id="spinCost">10</span> G
+                    Стоимость: 10 G
                 </div>
             </div>
         </div>
 
         <!-- Stats -->
         <div class="stats-section">
-            <div class="stats-title">СТАТИСТИКА ИГРЫ</div>
+            <div class="stats-title">СТАТИСТИКА</div>
             <div class="stats-grid">
                 <div class="stat-item">
                     <div class="stat-label">Всего спинов</div>
@@ -98,7 +97,7 @@
         <!-- Footer -->
         <footer class="footer">
             <p>GoldBank Roulette © 2024</p>
-            <p>Standoff 2 Style Mini App</p>
+            <p>Standoff 2 Mini App</p>
         </footer>
     </div>
 
@@ -109,13 +108,13 @@
     <div class="win-effect" id="winEffect"></div>
 
     <!-- Audio -->
-    <audio id="spinSound">
+    <audio id="spinSound" preload="auto">
         <source src="https://assets.mixkit.co/sfx/preview/mixkit-slot-machine-wheel-spin-1382.mp3" type="audio/mpeg">
     </audio>
-    <audio id="winSound">
+    <audio id="winSound" preload="auto">
         <source src="https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3" type="audio/mpeg">
     </audio>
-    <audio id="loseSound">
+    <audio id="loseSound" preload="auto">
         <source src="https://assets.mixkit.co/sfx/preview/mixkit-wrong-answer-fail-notification-946.mp3" type="audio/mpeg">
     </audio>
 

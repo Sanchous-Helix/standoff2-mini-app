@@ -1,7 +1,7 @@
-// Initialize Telegram Web App
+// Telegram Web App
 let tg = window.Telegram?.WebApp;
 
-// Game data
+// Данные игры
 let gameData = {
     balance: 100,
     totalSpins: 0,
@@ -12,7 +12,7 @@ let gameData = {
     freeSpinAvailable: true
 };
 
-// 8 ПРИЗОВ НА КОЛЕСЕ - СТРОГО ПО ПОРЯДКУ
+// 8 СЕКТОРОВ НА КОЛЕСЕ - ТОЛЬКО ЭТИ ЗНАЧЕНИЯ!
 const WHEEL_PRIZES = [
     { value: 0, text: '0 G', color: '#5d6d7e', class: 'sector-0' },
     { value: 5, text: '5 G', color: '#2ecc71', class: 'sector-5' },
@@ -24,8 +24,8 @@ const WHEEL_PRIZES = [
     { value: 250, text: '250 G', color: '#00bcd4', class: 'sector-250' }
 ];
 
-// Шансы для бесплатной крутки (В ТОЧНОСТИ КАК В ЗАДАНИИ)
-const FREE_SPIN_CHANCES = [
+// Шансы для бесплатной крутки - ТОЧНО ПО ЗАДАНИЮ
+const FREE_CHANCES = [
     { value: 0, chance: 70.89 },
     { value: 5, chance: 15 },
     { value: 10, chance: 7.5 },
@@ -36,8 +36,8 @@ const FREE_SPIN_CHANCES = [
     { value: 250, chance: 0.01 }
 ];
 
-// Шансы для платной крутки (В ТОЧНОСТИ КАК В ЗАДАНИИ)
-const PAID_SPIN_CHANCES = [
+// Шансы для платной крутки - ТОЧНО ПО ЗАДАНИЮ
+const PAID_CHANCES = [
     { value: 0, chance: 50 },
     { value: 5, chance: 17.4 },
     { value: 10, chance: 15 },
@@ -48,172 +48,162 @@ const PAID_SPIN_CHANCES = [
     { value: 250, chance: 0.1 }
 ];
 
-// Spin costs
-const FREE_SPIN_COST = 0;
-const PAID_SPIN_COST = 10;
-const FREE_SPIN_COOLDOWN = 4 * 60 * 60 * 1000;
+const SPIN_COST = 10;
+const COOLDOWN = 4 * 60 * 60 * 1000;
 
-// Initialize game
+// Запуск игры
 function initGame() {
-    console.log('🎡 Инициализация...');
+    console.log('🎡 GoldBank Roulette');
     
     if (tg) {
         tg.expand();
+        try { tg.backgroundColor = '#0a0c10'; } catch(e) {}
     }
     
-    loadSavedGame();
+    loadGame();
     createWheel();
-    setupEventListeners();
+    setupListeners();
     updateUI();
     startTimer();
 }
 
-// Create wheel with 8 sectors
+// Создание колеса с 8 секторами
 function createWheel() {
     const wheel = document.getElementById('wheel');
     wheel.innerHTML = '';
     
-    const sectorAngle = 360 / 8; // 45 градусов
+    const angle = 360 / 8; // 45 градусов
     
-    WHEEL_PRIZES.forEach((prize, index) => {
+    WHEEL_PRIZES.forEach((prize, i) => {
         const sector = document.createElement('div');
         sector.className = `wheel-sector ${prize.class}`;
-        
-        const rotateAngle = index * sectorAngle;
-        sector.style.transform = `rotate(${rotateAngle}deg)`;
+        sector.style.transform = `rotate(${i * angle}deg)`;
         
         const span = document.createElement('span');
-        span.innerHTML = prize.text;
-        span.style.color = getContrastColor(prize.color);
+        span.textContent = prize.text;
+        span.style.color = '#ffffff';
         
         sector.appendChild(span);
         wheel.appendChild(sector);
     });
     
-    console.log('✅ Колесо создано: 8 секторов');
+    console.log('✅ Колесо с 8 секторами готово');
 }
 
-// Setup event listeners
-function setupEventListeners() {
-    document.getElementById('spinBtn').onclick = () => spinWheel(false);
-    document.getElementById('freeSpinBtn').onclick = () => spinWheel(true);
+// Слушатели
+function setupListeners() {
+    document.getElementById('spinBtn').onclick = () => spin(false);
+    document.getElementById('freeSpinBtn').onclick = () => spin(true);
 }
 
-// Update UI
+// Обновление интерфейса
 function updateUI() {
     document.getElementById('balance').textContent = gameData.balance;
     document.getElementById('goldAmount').textContent = gameData.balance + ' G';
-    document.getElementById('spinCost').textContent = PAID_SPIN_COST;
     document.getElementById('totalSpins').textContent = gameData.totalSpins;
     document.getElementById('totalWon').textContent = gameData.totalWon + ' G';
     document.getElementById('maxWin').textContent = gameData.maxWin + ' G';
     
-    const luckRate = gameData.totalSpins > 0 
-        ? Math.round((gameData.wins / gameData.totalSpins) * 100) 
-        : 0;
-    document.getElementById('luckRate').textContent = luckRate + '%';
+    const luck = gameData.totalSpins ? Math.round((gameData.wins / gameData.totalSpins) * 100) : 0;
+    document.getElementById('luckRate').textContent = luck + '%';
     
-    document.getElementById('spinBtn').disabled = gameData.balance < PAID_SPIN_COST;
+    document.getElementById('spinBtn').disabled = gameData.balance < SPIN_COST;
     document.getElementById('freeSpinBtn').disabled = !gameData.freeSpinAvailable;
 }
 
-// Load saved game
-function loadSavedGame() {
+// Загрузка сохранения
+function loadGame() {
     try {
-        const saved = localStorage.getItem('goldBankSave');
-        if (saved) {
-            const parsed = JSON.parse(saved);
-            gameData = { ...gameData, ...parsed };
+        const save = localStorage.getItem('goldbank');
+        if (save) {
+            const data = JSON.parse(save);
+            gameData = { ...gameData, ...data };
             
             if (gameData.lastFreeSpin) {
-                const now = Date.now();
-                gameData.freeSpinAvailable = (now - gameData.lastFreeSpin) >= FREE_SPIN_COOLDOWN;
+                const diff = Date.now() - gameData.lastFreeSpin;
+                gameData.freeSpinAvailable = diff >= COOLDOWN;
             }
         }
-    } catch (e) {}
+    } catch(e) {}
 }
 
-// Save game
+// Сохранение
 function saveGame() {
     try {
-        localStorage.setItem('goldBankSave', JSON.stringify(gameData));
-    } catch (e) {}
+        localStorage.setItem('goldbank', JSON.stringify(gameData));
+    } catch(e) {}
 }
 
-// Start timer
+// Таймер бесплатного спина
 function startTimer() {
-    updateFreeSpinTimer();
-    setInterval(updateFreeSpinTimer, 1000);
+    updateTimer();
+    setInterval(updateTimer, 1000);
 }
 
-// Update timer
-function updateFreeSpinTimer() {
-    const timerElement = document.getElementById('freeSpinTimer');
+function updateTimer() {
+    const timer = document.getElementById('freeSpinTimer');
     
     if (!gameData.lastFreeSpin || gameData.freeSpinAvailable) {
-        timerElement.textContent = 'Доступно сейчас';
-        timerElement.style.color = '#2ecc71';
+        timer.textContent = '🎁 Доступно сейчас';
+        timer.style.color = '#2ecc71';
         return;
     }
     
-    const now = Date.now();
-    const timeLeft = FREE_SPIN_COOLDOWN - (now - gameData.lastFreeSpin);
+    const left = COOLDOWN - (Date.now() - gameData.lastFreeSpin);
     
-    if (timeLeft <= 0) {
+    if (left <= 0) {
         gameData.freeSpinAvailable = true;
         document.getElementById('freeSpinBtn').disabled = false;
-        timerElement.textContent = 'Доступно сейчас';
-        timerElement.style.color = '#2ecc71';
-        showNotification('🎁 Бесплатный спин доступен!');
+        timer.textContent = '🎁 Доступно сейчас';
+        timer.style.color = '#2ecc71';
+        showMessage('🎁 Бесплатный спин доступен!');
         return;
     }
     
-    const hours = Math.floor(timeLeft / 3600000);
-    const minutes = Math.floor((timeLeft % 3600000) / 60000);
-    const seconds = Math.floor((timeLeft % 60000) / 1000);
+    const h = Math.floor(left / 3600000);
+    const m = Math.floor((left % 3600000) / 60000);
+    const s = Math.floor((left % 60000) / 1000);
     
-    timerElement.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-    timerElement.style.color = '#ff4444';
+    timer.textContent = `⏳ ${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+    timer.style.color = '#ff4444';
 }
 
-// Get random prize
-function getRandomPrize(chances) {
-    const totalChance = chances.reduce((sum, p) => sum + p.chance, 0);
-    let random = Math.random() * totalChance;
+// Случайный приз
+function getPrize(chances) {
+    const total = chances.reduce((s, p) => s + p.chance, 0);
+    let rand = Math.random() * total;
     
-    for (const prize of chances) {
-        if (random < prize.chance) {
-            return prize.value;
-        }
-        random -= prize.chance;
+    for (const p of chances) {
+        if (rand < p.chance) return p.value;
+        rand -= p.chance;
     }
     return 0;
 }
 
-// Spin wheel
-let isSpinning = false;
+// Вращение
+let spinning = false;
 
-function spinWheel(isFree) {
-    if (isSpinning) return;
+function spin(isFree) {
+    if (spinning) return;
     
-    const chances = isFree ? FREE_SPIN_CHANCES : PAID_SPIN_CHANCES;
+    const chances = isFree ? FREE_CHANCES : PAID_CHANCES;
     
-    // Проверка баланса
-    if (!isFree && gameData.balance < PAID_SPIN_COST) {
-        showNotification('❌ Недостаточно G!');
+    // Проверки
+    if (!isFree && gameData.balance < SPIN_COST) {
+        showMessage('❌ Недостаточно G!');
         return;
     }
     
     if (isFree && !gameData.freeSpinAvailable) {
-        showNotification('⏳ Бесплатный спин недоступен!');
+        showMessage('⏳ Еще не доступно!');
         return;
     }
     
-    isSpinning = true;
+    spinning = true;
     
     // Списание
     if (!isFree) {
-        gameData.balance -= PAID_SPIN_COST;
+        gameData.balance -= SPIN_COST;
     } else {
         gameData.lastFreeSpin = Date.now();
         gameData.freeSpinAvailable = false;
@@ -222,108 +212,102 @@ function spinWheel(isFree) {
     gameData.totalSpins++;
     updateUI();
     
-    // Получаем выигрыш
-    const winAmount = getRandomPrize(chances);
-    console.log(`🎯 Выпало: ${winAmount} G`);
+    // Звук
+    play('spinSound');
     
-    // Находим индекс на колесе
-    const prizeIndex = WHEEL_PRIZES.findIndex(p => p.value === winAmount);
-    console.log(`🎡 Сектор: ${prizeIndex} (${WHEEL_PRIZES[prizeIndex].text})`);
+    // Выигрыш
+    const win = getPrize(chances);
+    console.log(`🎯 Выпало: ${win} G`);
+    
+    // Индекс на колесе
+    const index = WHEEL_PRIZES.findIndex(p => p.value === win);
+    console.log(`🎡 Сектор ${index}: ${WHEEL_PRIZES[index].text}`);
     
     // Вращаем колесо
     const wheel = document.getElementById('wheel');
-    const sectorAngle = 360 / 8;
     
-    // ПРОСТАЯ ФОРМУЛА: 5 оборотов + позиция сектора
-    const stopAngle = 1800 + (prizeIndex * 45) + 22.5;
+    // ФОРМУЛА: 5 оборотов (1800°) + сектор * 45° + половина сектора (22.5°)
+    const rotate = 1800 + (index * 45) + 22.5;
     
-    wheel.style.transition = 'transform 3s';
-    wheel.style.transform = `rotate(${stopAngle}deg)`;
+    wheel.style.transition = 'transform 3s cubic-bezier(0.2, 0.8, 0.3, 1)';
+    wheel.style.transform = `rotate(${rotate}deg)`;
     
-    // Обработка результата
+    // Результат
     setTimeout(() => {
-        // Начисляем выигрыш
-        if (winAmount > 0) {
-            gameData.balance += winAmount;
-            gameData.totalWon += winAmount;
+        if (win > 0) {
+            gameData.balance += win;
+            gameData.totalWon += win;
             gameData.wins++;
-            
-            if (winAmount > gameData.maxWin) {
-                gameData.maxWin = winAmount;
-            }
+            if (win > gameData.maxWin) gameData.maxWin = win;
         }
         
-        // Показываем сообщение
-        let message = '';
-        if (winAmount === 250) message = '🏆 СУПЕР ДЖЕКПОТ! +250 G!';
-        else if (winAmount === 100) message = '🎉 МЕГА ВЫИГРЫШ! +100 G!';
-        else if (winAmount === 50) message = '💰 БОЛЬШОЙ ВЫИГРЫШ! +50 G!';
-        else if (winAmount === 25) message = '🎊 Отлично! +25 G!';
-        else if (winAmount === 15) message = '🎯 Хорошо! +15 G!';
-        else if (winAmount === 10) message = '👍 Неплохо! +10 G!';
-        else if (winAmount === 5) message = '👌 +5 G!';
-        else message = '😔 Вы ничего не выиграли';
+        // Сообщение
+        let msg = '';
+        if (win === 250) msg = '🏆 СУПЕР ДЖЕКПОТ! +250 G!';
+        else if (win === 100) msg = '🎉 МЕГА ВЫИГРЫШ! +100 G!';
+        else if (win === 50) msg = '💰 БОЛЬШОЙ ВЫИГРЫШ! +50 G!';
+        else if (win === 25) msg = '🎊 ОТЛИЧНО! +25 G!';
+        else if (win === 15) msg = '🎯 ХОРОШО! +15 G!';
+        else if (win === 10) msg = '👍 НЕПЛОХО! +10 G!';
+        else if (win === 5) msg = '👌 +5 G!';
+        else msg = '😔 ПРОИГРЫШ';
         
-        if (isFree) message += ' (Бесплатно)';
+        if (isFree) msg += ' (Бесплатно)';
         
-        showNotification(message);
+        showMessage(msg);
         
-        if (winAmount >= 50) {
+        if (win >= 50) {
             showWinEffect();
-            playSound('winSound');
-        } else if (winAmount > 0) {
-            playSound('winSound');
+            play('winSound');
+        } else if (win > 0) {
+            play('winSound');
         } else {
-            playSound('loseSound');
+            play('loseSound');
         }
         
         updateUI();
         saveGame();
-        isSpinning = false;
+        spinning = false;
     }, 3000);
 }
 
-// Show notification
-function showNotification(message) {
-    const notification = document.getElementById('notification');
-    notification.textContent = message;
-    notification.style.display = 'block';
+// Сообщение
+function showMessage(text) {
+    const el = document.getElementById('notification');
+    el.textContent = text;
+    el.style.display = 'block';
+    el.style.animation = 'none';
+    el.offsetHeight;
+    el.style.animation = 'slideIn 0.3s ease';
     
     setTimeout(() => {
-        notification.style.display = 'none';
+        el.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => {
+            el.style.display = 'none';
+        }, 300);
     }, 3000);
 }
 
-// Show win effect
+// Эффект выигрыша
 function showWinEffect() {
-    const effect = document.getElementById('winEffect');
-    effect.style.display = 'block';
-    
+    const el = document.getElementById('winEffect');
+    el.style.display = 'block';
     setTimeout(() => {
-        effect.style.display = 'none';
+        el.style.display = 'none';
     }, 1000);
 }
 
-// Play sound
-function playSound(soundId) {
+// Звук
+function play(id) {
     try {
-        const sound = document.getElementById(soundId);
+        const sound = document.getElementById(id);
         if (sound) {
             sound.currentTime = 0;
             sound.volume = 0.3;
             sound.play();
         }
-    } catch (e) {}
+    } catch(e) {}
 }
 
-// Get contrast color
-function getContrastColor(hexcolor) {
-    hexcolor = hexcolor.replace("#", "");
-    const r = parseInt(hexcolor.substr(0, 2), 16);
-    const g = parseInt(hexcolor.substr(2, 2), 16);
-    const b = parseInt(hexcolor.substr(4, 2), 16);
-    return (r * 299 + g * 587 + b * 114) / 1000 > 128 ? '#000000' : '#FFFFFF';
-}
-
-// Start game
+// Старт
 document.addEventListener('DOMContentLoaded', initGame);
