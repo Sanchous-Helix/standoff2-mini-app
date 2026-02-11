@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Standoff 2 · Колесо фортуны</title>
+    <title>Standoff 2 · Рулетка (градусы)</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
     <div class="app">
-        <!-- Шапка: профиль + баланс -->
+        <!-- Профиль игрока -->
         <div class="profile">
             <img id="avatar" class="avatar" src="" alt="avatar">
             <div class="profile-info">
@@ -22,7 +22,7 @@
             </div>
         </div>
 
-        <!-- Колесо фортуны (структура из статьи) -->
+        <!-- Колесо фортуны -->
         <div class="deal-wheel">
             <ul class="spinner" id="spinner"></ul>
             <div class="ticker"></div>
@@ -37,10 +37,10 @@
             </div>
         </div>
 
-        <!-- Результат вращения -->
-        <div id="resultMessage" class="result-message">🎲 НАЖМИ КРУТИТЬ</div>
+        <!-- Результат -->
+        <div id="resultMessage" class="result-message">🎲 КРУТИ!</div>
 
-        <!-- Таблицы шансов (переключаемые) -->
+        <!-- Таблицы шансов -->
         <div class="chances-block">
             <div class="chances-tabs">
                 <button id="tabFree" class="tab active">🎁 Бесплатно</button>

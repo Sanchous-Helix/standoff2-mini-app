@@ -1,4 +1,3 @@
-/* ===== БАЗОВЫЕ СБРОСЫ И ПЕРЕМЕННЫЕ ===== */
 * {
     margin: 0;
     padding: 0;
@@ -26,7 +25,7 @@ body {
     box-shadow: 0 20px 40px rgba(0,0,0,0.6);
 }
 
-/* ===== ПРОФИЛЬ ===== */
+/* Профиль */
 .profile {
     background: #242a36;
     border-radius: 28px;
@@ -76,13 +75,9 @@ body {
     margin-left: 4px;
 }
 
-/* ===== КОЛЕСО ФОРТУНЫ (основа — из thecode.media) ===== */
+/* Колесо — CSS-метод (адаптация из thecode.media) */
 .deal-wheel {
     --size: clamp(260px, 70vmin, 460px);
-    --lg-hs: 0 0%;
-    --lg-stop: 50%;
-    --lg: linear-gradient(hsl(var(--lg-hs) 0%) 0 var(--lg-stop), hsl(var(--lg-hs) 20%) var(--lg-stop) 100%);
-    
     position: relative;
     display: grid;
     grid-gap: calc(var(--size) / 20);
@@ -96,7 +91,6 @@ body {
     grid-area: spinner;
 }
 
-/* контейнер секторов */
 .spinner {
     position: relative;
     display: grid;
@@ -104,7 +98,7 @@ body {
     grid-template-areas: "spinner";
     width: var(--size);
     height: var(--size);
-    transform: rotate(calc(var(--rotate, 25) * 1deg)); /* начальное смещение, позже управляется скриптом */
+    transform: rotate(calc(var(--rotate, 0) * 1deg));
     border-radius: 50%;
     box-shadow: 0 0 20px rgba(255,215,0,0.3);
     transition: transform 3s cubic-bezier(0.25, 0.1, 0.15, 1);
@@ -115,7 +109,7 @@ body {
     grid-area: spinner;
 }
 
-/* сектор с текстом */
+/* Сектор с текстом */
 .prize {
     display: flex;
     align-items: center;
@@ -132,7 +126,7 @@ body {
     letter-spacing: 1px;
 }
 
-/* язычок (стрелка) */
+/* Стрелка (всегда сверху) */
 .ticker {
     position: relative;
     left: calc(var(--size) / 2 - 6px);
@@ -148,7 +142,7 @@ body {
     z-index: 10;
 }
 
-/* панель кнопок */
+/* Панель кнопок */
 .btn-panel {
     grid-area: trigger;
     display: flex;
@@ -201,7 +195,7 @@ body {
     border-radius: 40px;
 }
 
-/* сообщение о выигрыше */
+/* Результат */
 .result-message {
     background: #1e232c;
     padding: 18px;
@@ -219,7 +213,7 @@ body {
     letter-spacing: 2px;
 }
 
-/* блок шансов */
+/* Шансы */
 .chances-block {
     background: #1e232c;
     border-radius: 20px;
@@ -281,7 +275,6 @@ body {
     font-weight: bold;
 }
 
-/* анимация джекпота */
 @keyframes jackpotFlash {
     0%, 100% { transform: scale(1); background: #ffd700; color: black; }
     50% { transform: scale(1.08); background: #ffaa00; color: black; }
