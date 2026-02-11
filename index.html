@@ -156,7 +156,6 @@
 </head>
 <body>
     <div class="app">
-        <!-- Профиль -->
         <div class="profile">
             <img id="avatar" class="avatar" src="" alt="avatar">
             <div>
@@ -167,16 +166,13 @@
             </div>
         </div>
         
-        <!-- Рулетка -->
         <div class="wheel-box">
             <canvas id="wheel" width="400" height="400"></canvas>
             <div class="pointer">▼</div>
         </div>
         
-        <!-- Результат -->
         <div id="result" class="result">🎲 КРУТИ!</div>
         
-        <!-- Кнопки -->
         <div class="buttons">
             <button id="freeBtn" class="btn btn-free">
                 🎁 БЕСПЛАТНО
@@ -189,12 +185,10 @@
     </div>
     
     <script>
-        // Telegram
         const tg = Telegram.WebApp;
         tg.ready();
         tg.expand();
         
-        // Данные пользователя
         const user = tg.initDataUnsafe?.user || {
             first_name: 'Игрок',
             id: Date.now()
@@ -215,7 +209,6 @@
             { value: 0, color: '#e74c3c' }    // 315°
         ];
         
-        // Шансы: [250, 100, 50, 25, 15, 10, 5, 0]
         const FREE_CHANCES = [0.01, 0.1, 0.7, 1.8, 4, 7.5, 15, 70.89];
         const PAID_CHANCES = [0.1, 0.5, 2, 5, 10, 15, 17.4, 50];
         
@@ -226,7 +219,6 @@
         let rotation = 0;
         let animFrame = null;
         
-        // Canvas
         const canvas = document.getElementById('wheel');
         const ctx = canvas.getContext('2d');
         
@@ -247,10 +239,9 @@
             ctx.clearRect(0, 0, w, h);
             
             for (let i = 0; i < SECTORS.length; i++) {
-                const start = i * 0.7854 + angle; // 45° в радианах
+                const start = i * 0.7854 + angle;
                 const end = start + 0.7854;
                 
-                // Сектор
                 ctx.beginPath();
                 ctx.moveTo(cx, cy);
                 ctx.arc(cx, cy, r, start, end);
@@ -258,15 +249,13 @@
                 
                 ctx.fillStyle = SECTORS[i].color;
                 ctx.fill();
-                
                 ctx.strokeStyle = 'black';
                 ctx.lineWidth = 2;
                 ctx.stroke();
                 
-                // Текст
                 ctx.save();
                 ctx.translate(cx, cy);
-                ctx.rotate(start + 0.3927); // 22.5° в радианах
+                ctx.rotate(start + 0.3927);
                 ctx.textAlign = 'center';
                 ctx.font = 'bold 24px Arial';
                 ctx.fillStyle = 'white';
@@ -276,19 +265,17 @@
                 ctx.restore();
             }
             
-            // Центр
             ctx.beginPath();
             ctx.arc(cx, cy, 25, 0, 7);
             ctx.fillStyle = 'gold';
             ctx.fill();
         }
         
-        // ============ ВРАЩЕНИЕ ============
+        // ============ ВРАЩЕНИЕ - ИСПРАВЛЕНО! ============
         function spinTo(value) {
-            // Находим индекс сектора
             const index = SECTORS.findIndex(s => s.value === value);
-            // Целевой угол: указатель на верх (0°) должен показывать на центр сектора
-            const targetAngle = (index * 45 + 22.5) * 0.0174533; // в радианы
+            // ВАЖНО: Стрелка наверху указывает на ГРАНИЦУ секторов!
+            const targetAngle = (index * 45) * 0.0174533; // Убрал +22.5!
             
             return new Promise((resolve) => {
                 if (isSpinning) return;
@@ -329,7 +316,7 @@
             for (let i = 0; i < chances.length; i++) {
                 sum += chances[i];
                 if (rand < sum) {
-                    console.log(`🎲 Выигрыш: ${SECTORS[i].value}G`);
+                    console.log(`🎲 Выигрыш: ${SECTORS[i].value}G (сектор ${i})`);
                     return SECTORS[i].value;
                 }
             }
@@ -343,11 +330,8 @@
                 return;
             }
             
-            // Бесплатная крутка
             if (!isPaid) {
-                if (!lastFree) {
-                    // Ок
-                } else {
+                if (lastFree) {
                     const hours = (Date.now() - lastFree) / 3600000;
                     if (hours < 24) {
                         tg.showAlert('Подождите ' + Math.floor(24 - hours) + 'ч');
@@ -356,45 +340,36 @@
                 }
             }
             
-            // Платная крутка
             if (isPaid && balance < 10) {
                 tg.showAlert('Недостаточно G!');
                 return;
             }
             
-            // Блокируем кнопки
             document.getElementById('freeBtn').disabled = true;
             document.getElementById('paidBtn').disabled = true;
             
-            // Списываем
             if (isPaid) {
                 balance -= 10;
                 document.getElementById('balance').innerText = balance;
             }
             
-            // ВЫБИРАЕМ ВЫИГРЫШ
             const winValue = getWin(isPaid);
             document.getElementById('result').innerHTML = '🎰 КРУТИМ...';
             
-            // КРУТИМ
             await spinTo(winValue);
             
-            // НАЧИСЛЯЕМ
             balance += winValue;
             document.getElementById('balance').innerText = balance;
             
-            // Бесплатная крутка
             if (!isPaid) {
                 lastFree = Date.now();
             }
             
-            // Сохраняем
             localStorage.setItem(`game_${user.id}`, JSON.stringify({
                 balance: balance,
                 lastFree: lastFree
             }));
             
-            // Результат
             if (winValue >= 100) {
                 document.getElementById('result').innerHTML = `🔥 +${winValue}G 🔥`;
                 tg.HapticFeedback.impactOccurred('heavy');
@@ -409,12 +384,10 @@
                 tg.HapticFeedback.notificationOccurred('error');
             }
             
-            // Разблокируем
             document.getElementById('paidBtn').disabled = balance < 10;
             updateTimer();
         }
         
-        // ============ ТАЙМЕР ============
         function updateTimer() {
             const timerEl = document.getElementById('timer');
             
@@ -436,20 +409,16 @@
             }
         }
         
-        // ============ ОБРАБОТЧИКИ ============
         document.getElementById('freeBtn').onclick = () => spin(false);
         document.getElementById('paidBtn').onclick = () => spin(true);
         
-        // ============ СТАРТ ============
         drawWheel();
         document.getElementById('balance').innerText = balance;
         document.getElementById('paidBtn').disabled = balance < 10;
         updateTimer();
         
-        // Таймер
         setInterval(updateTimer, 60000);
         
-        // Сохранение
         window.onbeforeunload = () => {
             if (animFrame) cancelAnimationFrame(animFrame);
             localStorage.setItem(`game_${user.id}`, JSON.stringify({
