@@ -3,35 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GoldBank Roulette</title>
+    <title>Standoff 2 Рулетка</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-    <div class="game">
-        <div class="balance">
-            💰 Баланс: <span id="balance">100</span> G
+    <div class="container">
+        <div class="header">
+            <h1>🎰 STANDOFF 2</h1>
+            <div class="balance">
+                💰 <span id="balance">100</span> G
+            </div>
         </div>
-        
-        <div class="free-spin">
-            <button id="freeSpinBtn">🎁 Бесплатный спин</button>
-            <div id="freeSpinTimer">Доступно сейчас</div>
+
+        <div class="slot-machine">
+            <div class="slot-window">
+                <div id="resultDisplay">🎲</div>
+            </div>
+            <div class="slot-info">
+                <span class="price">⚡ 10G за прокрут</span>
+                <span class="jackpot">🔥 ДЖЕКПОТ: 100G</span>
+            </div>
         </div>
-        
-        <div class="wheel-container">
-            <div class="wheel" id="wheel"></div>
-            <div class="pointer">▼</div>
+
+        <div class="last-win">
+            <span id="lastWinText"></span>
         </div>
-        
-        <button id="spinBtn">🎰 Крутить за 10 G</button>
-        
+
+        <button id="spinButton" class="spin-btn">
+            🎲 КРУТИТЬ
+        </button>
+
         <div class="stats">
-            <div>Всего спинов: <span id="totalSpins">0</span></div>
-            <div>Выиграно: <span id="totalWon">0</span> G</div>
-            <div>Макс: <span id="maxWin">0</span> G</div>
+            <div>📊 Шансы:</div>
+            <div class="chances">
+                <span class="chance low">0-25G: 70%</span>
+                <span class="chance medium">50G: 20%</span>
+                <span class="chance high">100G: 10%</span>
+            </div>
         </div>
     </div>
-    
-    <div id="notification" class="notification"></div>
     <script src="script.js"></script>
 </body>
 </html>
