@@ -3,40 +3,39 @@ const tg = window.Telegram.WebApp;
 tg.ready();
 tg.expand();
 
-// ============ КОНФИГУРАЦИЯ - ИСПРАВЛЕНО ============
-// ПОРЯДОК: ПО ЧАСОВОЙ СТРЕЛКЕ ОТ ВЕРХА (0°)
+// ============ КОНФИГУРАЦИЯ - 4 ПАРЫ ИСПРАВЛЕНЫ ============
 const SECTORS = [
-    { value: 250, color: '#c0392b', label: '250' }, // 0°   (ВЕРХ) - ДЖЕКПОТ
+    { value: 250, color: '#c0392b', label: '250' }, // 0°   (ВЕРХ)
     { value: 100, color: '#e84342', label: '100' }, // 45°
     { value: 50, color: '#9b59b6', label: '50' },   // 90°
     { value: 25, color: '#3498db', label: '25' },   // 135°
-    { value: 15, color: '#2ecc71', label: '15' },   // 180°
-    { value: 10, color: '#f1c40f', label: '10' },   // 225°
-    { value: 5, color: '#e67e22', label: '5' },     // 270°
-    { value: 0, color: '#e74c3c', label: '0' }      // 315°
+    { value: 0, color: '#e74c3c', label: '0' },     // 180° (⭐ БЫЛО 15 → СТАЛО 0)
+    { value: 15, color: '#2ecc71', label: '15' },   // 225° (⭐ БЫЛО 0 → СТАЛО 15)
+    { value: 5, color: '#e67e22', label: '5' },     // 270° (⭐ БЫЛО 10 → СТАЛО 5)
+    { value: 10, color: '#f1c40f', label: '10' }    // 315° (⭐ БЫЛО 5 → СТАЛО 10)
 ];
 
-// Шансы в ТОЧНОМ соответствии с порядком секторов
+// Шансы в соответствии с ИСПРАВЛЕННЫМ порядком
 const CHANCES = {
     free: [
-        0.01,   // 250 G — 0.01% (верх)
-        0.1,    // 100 G — 0.1%
-        0.7,    // 50 G  — 0.7%
-        1.8,    // 25 G  — 1.8%
-        4,      // 15 G  — 4%
-        7.5,    // 10 G  — 7.5%
-        15,     // 5 G   — 15%
-        70.89   // 0 G   — 70.89% (низ)
+        0.01,   // 250 G
+        0.1,    // 100 G
+        0.7,    // 50 G
+        1.8,    // 25 G
+        70.89,  // 0 G   (⭐ ИСПРАВЛЕНО)
+        4,      // 15 G  (⭐ ИСПРАВЛЕНО)
+        15,     // 5 G   (⭐ ИСПРАВЛЕНО)
+        7.5     // 10 G  (⭐ ИСПРАВЛЕНО)
     ],
     paid: [
-        0.1,    // 250 G — 0.1%  (верх)
-        0.5,    // 100 G — 0.5%
-        2,      // 50 G  — 2%
-        5,      // 25 G  — 5%
-        10,     // 15 G  — 10%
-        15,     // 10 G  — 15%
-        17.4,   // 5 G   — 17.4%
-        50      // 0 G   — 50%   (низ)
+        0.1,    // 250 G
+        0.5,    // 100 G
+        2,      // 50 G
+        5,      // 25 G
+        50,     // 0 G   (⭐ ИСПРАВЛЕНО)
+        10,     // 15 G  (⭐ ИСПРАВЛЕНО)
+        17.4,   // 5 G   (⭐ ИСПРАВЛЕНО)
+        15      // 10 G  (⭐ ИСПРАВЛЕНО)
     ]
 };
 
@@ -108,25 +107,45 @@ function drawWheel(rotationAngle = 0) {
         ctx.lineWidth = 2;
         ctx.stroke();
         
+        // Текст
         ctx.save();
         ctx.translate(centerX, centerY);
-        ctx.rotate(startAngle + anglePerSector / 2);
+        
+        const textAngle = startAngle + anglePerSector / 2;
+        const textRadius = radius * 0.65;
+        const x = Math.cos(textAngle) * textRadius;
+        const y = Math.sin(textAngle) * textRadius;
+        
+        ctx.translate(x, y);
+        
+        if (textAngle % (Math.PI * 2) > Math.PI/2 && textAngle % (Math.PI * 2) < Math.PI * 3/2) {
+            ctx.rotate(textAngle + Math.PI);
+        } else {
+            ctx.rotate(textAngle);
+        }
+        
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.font = 'bold 20px Arial';
+        ctx.font = 'bold 22px Arial';
         ctx.fillStyle = '#fff';
         ctx.shadowColor = '#000';
-        ctx.shadowBlur = 4;
-        ctx.fillText(SECTORS[i].label, radius * 0.65, 0);
+        ctx.shadowBlur = 6;
+        ctx.fillText(SECTORS[i].label, 0, 0);
         ctx.restore();
     }
     
+    // Центральный круг
     ctx.beginPath();
-    ctx.arc(centerX, centerY, 20, 0, Math.PI * 2);
+    ctx.arc(centerX, centerY, 25, 0, Math.PI * 2);
     ctx.fillStyle = '#ffd700';
-    ctx.shadowBlur = 10;
+    ctx.shadowBlur = 15;
     ctx.fill();
     ctx.shadowBlur = 0;
+    
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, 8, 0, Math.PI * 2);
+    ctx.fillStyle = '#000';
+    ctx.fill();
 }
 
 // ============ ВЫБОР ВЫИГРЫША ============
@@ -142,7 +161,7 @@ function getWinIndex(mode) {
             return i;
         }
     }
-    return 7; // 0G по умолчанию
+    return 4; // 0G по умолчанию
 }
 
 // ============ АНИМАЦИЯ ВРАЩЕНИЯ ============
@@ -155,9 +174,7 @@ function spinWheel(targetIndex) {
         
         isSpinning = true;
         
-        // Целевой угол: указатель на ВЕРХУ (0°) должен указывать на ЦЕНТР целевого сектора
         const targetAngle = (targetIndex * 45 + 22.5) * Math.PI / 180;
-        
         const spins = 8;
         const startAngle = currentRotation;
         
@@ -220,7 +237,6 @@ async function handleSpin(mode) {
     const winAmount = SECTORS[winIndex].value;
     
     resultDisplay.innerHTML = '🎰 Крутим...';
-    
     await spinWheel(winIndex);
     
     balance += winAmount;
@@ -289,7 +305,6 @@ function checkFreeSpin() {
 freeSpinBtn.addEventListener('click', () => handleSpin('free'));
 paidSpinBtn.addEventListener('click', () => handleSpin('paid'));
 
-// Табы
 document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', function() {
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
