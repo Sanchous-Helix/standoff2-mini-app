@@ -192,7 +192,7 @@ body::before {
 
 .wheel-sector span {
     transform: rotate(45deg);
-    font-size: 13px;
+    font-size: 14px;
     font-weight: bold;
     text-align: center;
     padding-left: 35px;
@@ -453,7 +453,7 @@ body::before {
     margin-top: 15px;
 }
 
-/* Sector Colors */
+/* Sector Colors for 8 sectors */
 .sector-0 { background: linear-gradient(135deg, #5d6d7e, #3d4d5e); }
 .sector-5 { background: linear-gradient(135deg, #2ecc71, #27ae60); }
 .sector-10 { background: linear-gradient(135deg, #3498db, #2980b9); }
@@ -462,6 +462,12 @@ body::before {
 .sector-50 { background: linear-gradient(135deg, #e74c3c, #c0392b); }
 .sector-100 { background: linear-gradient(135deg, #e91e63, #c2185b); }
 .sector-250 { background: linear-gradient(135deg, #00bcd4, #0097a7); }
+
+/* Для сектора проигрыша сделаем текст покрупнее */
+.sector-0 span {
+    font-size: 12px;
+    font-weight: bold;
+}
 
 /* Responsive */
 @media (max-width: 480px) {
@@ -482,6 +488,10 @@ body::before {
         font-size: 12px;
         padding-left: 30px;
         padding-top: 15px;
+    }
+    
+    .sector-0 span {
+        font-size: 11px;
     }
     
     .stats-grid {
