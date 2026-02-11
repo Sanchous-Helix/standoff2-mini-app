@@ -131,34 +131,37 @@ function getWinIndex(mode) {
 }
 
 // ============ АНИМАЦИЯ ВРАЩЕНИЯ ============
-async function spinWheel(targetIndex) {
-    if (isSpinning) return;
-    isSpinning = true;
-    
-    // Блокируем кнопки
-    freeSpinBtn.disabled = true;
-    paidSpinBtn.disabled = true;
-    
-    // Целевой угол (каждый сектор = 45 градусов)
-    // + смещение чтобы указатель показывал на середину сектора
-    const targetAngle = (Math.PI * 2) - (targetIndex * 45 * Math.PI / 180) - (22.5 * Math.PI / 180);
-    
-    // Добавляем несколько полных оборотов
-    const spins = 8; // Количество оборотов
-    const finalAngle = currentRotation + (spins * Math.PI * 2) + targetAngle;
-    
-    // Анимация
-    const startTime = performance.now();
-    const duration = 3000; // 3 секунды
-    
+function spinWheel(targetIndex) {
     return new Promise((resolve) => {
+        if (isSpinning) {
+            resolve();
+            return;
+        }
+        
+        isSpinning = true;
+        
+        // Целевой угол: указатель должен смотреть на СЕРЕДИНУ сектора
+        // Каждый сектор занимает 45 градусов (Math.PI/4 радиан)
+        // Нам нужно, чтобы верхняя точка (0 радиан) указывала на середину целевого сектора
+        const targetAngle = (targetIndex * 45 + 22.5) * Math.PI / 180;
+        
+        // Добавляем несколько полных оборотов
+        const spins = 8;
+        const startAngle = currentRotation;
+        const deltaAngle = (spins * Math.PI * 2) + targetAngle - (currentRotation % (Math.PI * 2));
+        const finalAngle = currentRotation + deltaAngle;
+        
+        // Анимация
+        const startTime = performance.now();
+        const duration = 3000;
+        
         function animate(currentTime) {
             const elapsed = currentTime - startTime;
             const progress = Math.min(elapsed / duration, 1);
             
-            // Easing функция для плавной остановки
+            // Easing для плавной остановки
             const easeOut = 1 - Math.pow(1 - progress, 3);
-            const currentAngle = currentRotation + (finalAngle - currentRotation) * easeOut;
+            const currentAngle = startAngle + (finalAngle - startAngle) * easeOut;
             
             drawWheel(currentAngle);
             
@@ -180,7 +183,11 @@ async function spinWheel(targetIndex) {
 
 // ============ ОБРАБОТКА КРУТКИ ============
 async function handleSpin(mode) {
-    if (isSpinning) return;
+    // Проверка на вращение
+    if (isSpinning) {
+        tg.showAlert('⏳ Барабан уже крутится!');
+        return;
+    }
     
     // Проверка для бесплатной крутки
     if (mode === 'free' && !checkFreeSpin()) {
@@ -194,20 +201,27 @@ async function handleSpin(mode) {
         return;
     }
     
-    // Списываем плату
+    // БЛОКИРУЕМ КНОПКИ
+    freeSpinBtn.disabled = true;
+    paidSpinBtn.disabled = true;
+    
+    // 1️⃣ Списываем плату (для платной крутки)
     if (mode === 'paid') {
         balance -= SPIN_COST;
         updateBalanceUI();
     }
     
-    // Получаем выигрыш
+    // 2️⃣ ОПРЕДЕЛЯЕМ ВЫИГРЫШ ДО ВРАЩЕНИЯ
     const winIndex = getWinIndex(mode);
     const winAmount = SECTORS[winIndex].value;
     
-    // Крутим барабан
+    // Показываем, что крутим
+    resultDisplay.innerHTML = '🎰 Крутим...';
+    
+    // 3️⃣ КРУТИМ БАРАБАН К ВЫИГРЫШУ
     await spinWheel(winIndex);
     
-    // Начисляем выигрыш
+    // 4️⃣ ТОЛЬКО ТЕПЕРЬ НАЧИСЛЯЕМ ВЫИГРЫШ
     balance += winAmount;
     updateBalanceUI();
     
@@ -217,7 +231,7 @@ async function handleSpin(mode) {
         localStorage.setItem(`lastFreeSpin_${user.id}`, lastFreeSpin);
     }
     
-    // Показываем результат
+    // 5️⃣ ПОКАЗЫВАЕМ РЕЗУЛЬТАТ
     if (winAmount >= 100) {
         resultDisplay.innerHTML = `🔥 ДЖЕКПОТ! +${winAmount}G 🔥`;
         tg.HapticFeedback.impactOccurred('heavy');
@@ -232,13 +246,10 @@ async function handleSpin(mode) {
         tg.HapticFeedback.notificationOccurred('error');
     }
     
-    // Разблокируем кнопки
-    if (mode === 'free') {
-        paidSpinBtn.disabled = false;
-    } else {
-        freeSpinBtn.disabled = false;
-    }
-    
+    // 6️⃣ РАЗБЛОКИРУЕМ КНОПКИ
+    // Для платной кнопки проверяем баланс
+    paidSpinBtn.disabled = balance < SPIN_COST;
+    // Для бесплатной проверяем таймер
     checkFreeSpin();
 }
 
@@ -246,11 +257,16 @@ async function handleSpin(mode) {
 function updateBalanceUI() {
     balanceEl.textContent = balance;
     localStorage.setItem(`balance_${user.id}`, balance);
+    
+    // Обновляем состояние кнопки платной крутки
+    if (!isSpinning) {
+        paidSpinBtn.disabled = balance < SPIN_COST;
+    }
 }
 
 function checkFreeSpin() {
     if (!lastFreeSpin) {
-        freeSpinBtn.disabled = false;
+        if (!isSpinning) freeSpinBtn.disabled = false;
         freeTimer.textContent = 'Готово!';
         return true;
     }
@@ -259,7 +275,7 @@ function checkFreeSpin() {
     const hoursPassed = (now - lastFreeSpin) / (1000 * 60 * 60);
     
     if (hoursPassed >= COOLDOWN_HOURS) {
-        freeSpinBtn.disabled = false;
+        if (!isSpinning) freeSpinBtn.disabled = false;
         freeTimer.textContent = 'Готово!';
         return true;
     } else {
@@ -292,10 +308,17 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 });
 
 // Обновление таймера каждую минуту
-setInterval(checkFreeSpin, 60000);
+setInterval(() => {
+    if (!isSpinning) {
+        checkFreeSpin();
+    }
+}, 60000);
 
 // Начальная отрисовка
 drawWheel(currentRotation);
+
+// Проверка баланса при старте
+paidSpinBtn.disabled = balance < SPIN_COST;
 
 // Очистка анимации при уходе
 window.addEventListener('beforeunload', () => {
