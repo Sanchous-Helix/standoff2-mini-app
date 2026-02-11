@@ -454,37 +454,58 @@ body::before {
 }
 
 /* Sector Colors */
-.sector-0 { background: linear-gradient(135deg, #5d6d7e, #3d4d5e); }
-.sector-5 { background: linear-gradient(135deg, #2ecc71, #1abc9c); }
-.sector-10 { background: linear-gradient(135deg, #3498db, #2980b9); }
-.sector-15 { background: linear-gradient(135deg, #9b59b6, #8e44ad); }
-.sector-25 { background: linear-gradient(135deg, #f39c12, #e67e22); }
-.sector-50 { background: linear-gradient(135deg, #e74c3c, #c0392b); }
-.sector-100 { background: linear-gradient(135deg, #e91e63, #c2185b); }
-.sector-250 { background: linear-gradient(135deg, #00bcd4, #0097a7); }
+.sector-0 { 
+    background: linear-gradient(135deg, #5d6d7e, #3d4d5e);
+    border: 1px solid rgba(0, 0, 0, 0.5);
+}
+.sector-5 { 
+    background: linear-gradient(135deg, #2ecc71, #27ae60);
+    border: 1px solid rgba(0, 0, 0, 0.3);
+}
+.sector-10 { 
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    border: 1px solid rgba(0, 0, 0, 0.3);
+}
+.sector-15 { 
+    background: linear-gradient(135deg, #9b59b6, #8e44ad);
+    border: 1px solid rgba(0, 0, 0, 0.3);
+}
+.sector-25 { 
+    background: linear-gradient(135deg, #f39c12, #d68910);
+    border: 1px solid rgba(0, 0, 0, 0.3);
+}
+.sector-50 { 
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    border: 1px solid rgba(0, 0, 0, 0.3);
+}
+.sector-100 { 
+    background: linear-gradient(135deg, #e91e63, #c2185b);
+    border: 1px solid rgba(0, 0, 0, 0.3);
+}
+.sector-250 { 
+    background: linear-gradient(135deg, #00bcd4, #0097a7);
+    border: 1px solid rgba(0, 0, 0, 0.3);
+}
 
-/* Responsive */
-@media (max-width: 480px) {
-    .container {
-        padding: 5px;
-    }
-    
-    .wheel-container {
-        width: 250px;
-        height: 250px;
-    }
-    
-    .wheel {
-        border-width: 8px;
-    }
-    
-    .wheel-sector span {
-        font-size: 12px;
-        padding-left: 30px;
-        padding-top: 15px;
-    }
-    
-    .stats-grid {
-        grid-template-columns: 1fr;
-    }
+/* Улучшенный текст в секторах */
+.wheel-sector span {
+    transform: rotate(45deg);
+    font-size: 14px;
+    font-weight: bold;
+    text-align: center;
+    padding-left: 35px;
+    padding-top: 20px;
+    width: 100px;
+    text-shadow: 
+        1px 1px 3px rgba(0, 0, 0, 0.8),
+        -1px -1px 2px rgba(0, 0, 0, 0.5);
+    letter-spacing: 0.5px;
+    font-family: 'Arial Black', 'Arial', sans-serif;
+}
+
+/* Для сектора проигрыша сделаем текст покрупнее */
+.sector-0 span {
+    font-size: 13px;
+    padding-left: 25px;
+    padding-top: 25px;
 }

@@ -36,9 +36,9 @@ const PAID_SPIN_PRIZES = [
     { value: 250, chance: 0.1, text: '250 G', color: '#00bcd4', class: 'sector-250' }
 ];
 
-// Призы, которые отображаются на колесе (все равные сектора)
-const WHEEL_DISPLAY_PRIZES = [
-    { value: 0, text: '0 G', color: '#5d6d7e', class: 'sector-0' },
+// Все призы для отображения на колесе
+const WHEEL_PRIZES = [
+    { value: 0, text: 'ПРОИГРЫШ', color: '#5d6d7e', class: 'sector-0' },
     { value: 5, text: '5 G', color: '#2ecc71', class: 'sector-5' },
     { value: 10, text: '10 G', color: '#3498db', class: 'sector-10' },
     { value: 15, text: '15 G', color: '#9b59b6', class: 'sector-15' },
@@ -129,10 +129,10 @@ function initWheel() {
     const wheel = document.getElementById('wheel');
     wheel.innerHTML = '';
     
-    const totalSectors = WHEEL_DISPLAY_PRIZES.length;
+    const totalSectors = WHEEL_PRIZES.length;
     const sectorAngle = 360 / totalSectors;
     
-    WHEEL_DISPLAY_PRIZES.forEach((prize, index) => {
+    WHEEL_PRIZES.forEach((prize, index) => {
         const sector = document.createElement('div');
         sector.className = `wheel-sector ${prize.class}`;
         sector.dataset.prize = prize.value;
@@ -265,23 +265,27 @@ function spinWheel(isFree) {
     
     // Get random prize BEFORE spinning
     const prize = getRandomPrize(prizePool);
-    const prizeIndex = findPrizeIndexInWheel(prize.value);
+    console.log(`🎯 Выбран приз: ${prize.text}, значение: ${prize.value}`);
     
-    console.log(`🎯 Выбран приз: ${prize.text}, значение: ${prize.value}, индекс на колесе: ${prizeIndex}`);
+    // Найти индекс этого приза на колесе (по значению)
+    let prizeIndex = WHEEL_PRIZES.findIndex(p => p.value === prize.value);
+    if (prizeIndex === -1) prizeIndex = 0; // Если не нашли - показываем проигрыш
     
     const wheel = document.getElementById('wheel');
-    const totalSectors = WHEEL_DISPLAY_PRIZES.length;
+    const totalSectors = WHEEL_PRIZES.length;
     const sectorAngle = 360 / totalSectors;
     
     // Количество полных оборотов
     const fullRotations = 5;
+    // На сколько градусов сместить, чтобы указатель указывал на нужный сектор
     const pointerOffset = -90;
     
-    // Рассчитываем угол остановки
-    const stopAngle = (fullRotations * 360) + 
-                      ((totalSectors - prizeIndex) * sectorAngle) + 
-                      (sectorAngle / 2) + 
-                      pointerOffset;
+    // Рассчитываем угол остановки - сектор должен оказаться сверху под указателем
+    // При этом учитываем, что сектора начинаются с 0 (12 часов) и идут по часовой стрелке
+    const stopAngle = fullRotations * 360 + 
+                     (totalSectors - prizeIndex) * sectorAngle + 
+                     (sectorAngle / 2) + 
+                     pointerOffset;
     
     // Reset wheel position
     wheel.style.transition = 'none';
@@ -306,11 +310,6 @@ function spinWheel(isFree) {
         const sectorAtPointer = Math.floor(((360 - finalRotation) % 360) / sectorAngle);
         console.log(`📍 Конечный поворот: ${finalRotation.toFixed(1)}°, Сектор под указателем: ${sectorAtPointer}, Ожидался: ${prizeIndex}`);
     }, 4000);
-}
-
-// Find prize index in wheel display array
-function findPrizeIndexInWheel(value) {
-    return WHEEL_DISPLAY_PRIZES.findIndex(prize => prize.value === value);
 }
 
 // Get random prize from specified pool
