@@ -1,23 +1,44 @@
-// Инициализация Telegram WebApp
+// Инициализация Telegram
 const tg = window.Telegram.WebApp;
 tg.ready();
 tg.expand();
 
-// Состояние приложения
-let balance = 100;
-let lastFreeSpin = null;
+// ============ КОНФИГУРАЦИЯ ============
+const SECTORS = [
+    { value: 0, color: '#e74c3c', label: '0' },
+    { value: 5, color: '#e67e22', label: '5' },
+    { value: 10, color: '#f1c40f', label: '10' },
+    { value: 15, color: '#2ecc71', label: '15' },
+    { value: 25, color: '#3498db', label: '25' },
+    { value: 50, color: '#9b59b6', label: '50' },
+    { value: 100, color: '#e84342', label: '100' },
+    { value: 250, color: '#c0392b', label: '250' }
+];
+
+const CHANCES = {
+    free: [70.89, 15, 7.5, 4, 1.8, 0.7, 0.1, 0.01],
+    paid: [50, 17.4, 15, 10, 5, 2, 0.5, 0.1]
+};
+
 const SPIN_COST = 10;
 const COOLDOWN_HOURS = 24;
+
+// ============ СОСТОЯНИЕ ============
+let balance = 100;
+let lastFreeSpin = null;
+let isSpinning = false;
+let currentRotation = 0;
+let animationFrame = null;
 
 // Данные пользователя
 const user = tg.initDataUnsafe?.user || {
     first_name: 'Игрок',
-    username: 'player',
     id: Math.floor(Math.random() * 1000000)
 };
 
-// Элементы DOM
-const wheel = document.getElementById('wheel');
+// ============ DOM ЭЛЕМЕНТЫ ============
+const canvas = document.getElementById('wheelCanvas');
+const ctx = canvas.getContext('2d');
 const balanceEl = document.getElementById('balance');
 const userNameEl = document.getElementById('userName');
 const userAvatar = document.getElementById('userAvatar');
@@ -26,68 +47,207 @@ const freeSpinBtn = document.getElementById('freeSpinBtn');
 const paidSpinBtn = document.getElementById('paidSpinBtn');
 const freeTimer = document.getElementById('freeTimer');
 
-// Установка данных пользователя
+// ============ ИНИЦИАЛИЗАЦИЯ ============
 userNameEl.textContent = user.first_name + (user.last_name ? ' ' + user.last_name : '');
-userAvatar.src = user.photo_url || `https://ui-avatars.com/api/?name=${user.first_name}&background=ffd700&color=000&size=128`;
+userAvatar.src = user.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.first_name)}&background=ffd700&color=000&size=128`;
 
-// Шансы для разных режимов
-const CHANCES = {
-    free: [
-        { value: 0, chance: 70.89 },
-        { value: 5, chance: 15 },
-        { value: 10, chance: 7.5 },
-        { value: 15, chance: 4 },
-        { value: 25, chance: 1.8 },
-        { value: 50, chance: 0.7 },
-        { value: 100, chance: 0.1 },
-        { value: 250, chance: 0.01 }
-    ],
-    paid: [
-        { value: 0, chance: 50 },
-        { value: 5, chance: 17.4 },
-        { value: 10, chance: 15 },
-        { value: 15, chance: 10 },
-        { value: 25, chance: 5 },
-        { value: 50, chance: 2 },
-        { value: 100, chance: 0.5 },
-        { value: 250, chance: 0.1 }
-    ]
-};
+// Загрузка сохранённых данных
+const savedBalance = localStorage.getItem(`balance_${user.id}`);
+const savedLastFreeSpin = localStorage.getItem(`lastFreeSpin_${user.id}`);
 
-// Функция выбора выигрыша на основе шансов
-function getWinValue(mode) {
+if (savedBalance) balance = parseInt(savedBalance);
+if (savedLastFreeSpin) lastFreeSpin = parseInt(savedLastFreeSpin);
+
+updateBalanceUI();
+checkFreeSpin();
+
+// ============ ОТРИСОВКА БАРАБАНА ============
+function drawWheel(rotationAngle = 0) {
+    const width = canvas.width;
+    const height = canvas.height;
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const radius = Math.min(width, height) / 2 - 10;
+    
+    ctx.clearRect(0, 0, width, height);
+    
+    const anglePerSector = (Math.PI * 2) / SECTORS.length;
+    
+    for (let i = 0; i < SECTORS.length; i++) {
+        const startAngle = i * anglePerSector + rotationAngle;
+        const endAngle = startAngle + anglePerSector;
+        
+        // Рисуем сектор
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+        ctx.closePath();
+        
+        // Заливка
+        ctx.fillStyle = SECTORS[i].color;
+        ctx.fill();
+        
+        // Обводка
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        // Текст
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.rotate(startAngle + anglePerSector / 2);
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 20px Arial';
+        ctx.fillStyle = '#fff';
+        ctx.shadowColor = '#000';
+        ctx.shadowBlur = 4;
+        ctx.fillText(SECTORS[i].label, radius * 0.65, 0);
+        ctx.restore();
+    }
+    
+    // Рисуем центральный круг
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, 20, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffd700';
+    ctx.shadowBlur = 10;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+}
+
+// ============ ВЫБОР ВЫИГРЫША ============
+function getWinIndex(mode) {
     const chances = CHANCES[mode];
     const rand = Math.random() * 100;
     let cumulative = 0;
     
-    for (const item of chances) {
-        cumulative += item.chance;
+    for (let i = 0; i < chances.length; i++) {
+        cumulative += chances[i];
         if (rand < cumulative) {
-            return item.value;
+            return i;
         }
     }
     return 0;
 }
 
-// Анимация вращения барабана
-async function spinWheel(targetValue) {
-    // Определяем сектор для выигрыша
-    const sectorIndex = CHANCES.free.findIndex(item => item.value === targetValue);
-    const targetRotation = 360 * 5 + (45 * sectorIndex) + 22.5; // 5 полных оборотов + смещение
+// ============ АНИМАЦИЯ ВРАЩЕНИЯ ============
+async function spinWheel(targetIndex) {
+    if (isSpinning) return;
+    isSpinning = true;
     
-    // Вращаем
-    wheel.style.transform = `rotate(${targetRotation}deg)`;
+    // Блокируем кнопки
+    freeSpinBtn.disabled = true;
+    paidSpinBtn.disabled = true;
     
-    // Ждём окончания анимации
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    // Целевой угол (каждый сектор = 45 градусов)
+    // + смещение чтобы указатель показывал на середину сектора
+    const targetAngle = (Math.PI * 2) - (targetIndex * 45 * Math.PI / 180) - (22.5 * Math.PI / 180);
+    
+    // Добавляем несколько полных оборотов
+    const spins = 8; // Количество оборотов
+    const finalAngle = currentRotation + (spins * Math.PI * 2) + targetAngle;
+    
+    // Анимация
+    const startTime = performance.now();
+    const duration = 3000; // 3 секунды
+    
+    return new Promise((resolve) => {
+        function animate(currentTime) {
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            
+            // Easing функция для плавной остановки
+            const easeOut = 1 - Math.pow(1 - progress, 3);
+            const currentAngle = currentRotation + (finalAngle - currentRotation) * easeOut;
+            
+            drawWheel(currentAngle);
+            
+            if (progress < 1) {
+                animationFrame = requestAnimationFrame(animate);
+            } else {
+                // Сохраняем финальный угол
+                currentRotation = finalAngle % (Math.PI * 2);
+                drawWheel(currentRotation);
+                
+                isSpinning = false;
+                resolve();
+            }
+        }
+        
+        animationFrame = requestAnimationFrame(animate);
+    });
 }
 
-// Обновление баланса
+// ============ ОБРАБОТКА КРУТКИ ============
+async function handleSpin(mode) {
+    if (isSpinning) return;
+    
+    // Проверка для бесплатной крутки
+    if (mode === 'free' && !checkFreeSpin()) {
+        tg.showAlert('❌ Бесплатная крутка ещё недоступна!');
+        return;
+    }
+    
+    // Проверка для платной крутки
+    if (mode === 'paid' && balance < SPIN_COST) {
+        tg.showAlert('❌ Недостаточно G!');
+        return;
+    }
+    
+    // Списываем плату
+    if (mode === 'paid') {
+        balance -= SPIN_COST;
+        updateBalanceUI();
+    }
+    
+    // Получаем выигрыш
+    const winIndex = getWinIndex(mode);
+    const winAmount = SECTORS[winIndex].value;
+    
+    // Крутим барабан
+    await spinWheel(winIndex);
+    
+    // Начисляем выигрыш
+    balance += winAmount;
+    updateBalanceUI();
+    
+    // Для бесплатной крутки - ставим таймер
+    if (mode === 'free') {
+        lastFreeSpin = Date.now();
+        localStorage.setItem(`lastFreeSpin_${user.id}`, lastFreeSpin);
+    }
+    
+    // Показываем результат
+    if (winAmount >= 100) {
+        resultDisplay.innerHTML = `🔥 ДЖЕКПОТ! +${winAmount}G 🔥`;
+        tg.HapticFeedback.impactOccurred('heavy');
+    } else if (winAmount >= 50) {
+        resultDisplay.innerHTML = `⚡ +${winAmount}G! ⚡`;
+        tg.HapticFeedback.impactOccurred('medium');
+    } else if (winAmount > 0) {
+        resultDisplay.innerHTML = `🎉 +${winAmount}G!`;
+        tg.HapticFeedback.impactOccurred('light');
+    } else {
+        resultDisplay.innerHTML = `💔 0G... Повезёт в следующий раз`;
+        tg.HapticFeedback.notificationOccurred('error');
+    }
+    
+    // Разблокируем кнопки
+    if (mode === 'free') {
+        paidSpinBtn.disabled = false;
+    } else {
+        freeSpinBtn.disabled = false;
+    }
+    
+    checkFreeSpin();
+}
+
+// ============ ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ============
 function updateBalanceUI() {
     balanceEl.textContent = balance;
+    localStorage.setItem(`balance_${user.id}`, balance);
 }
 
-// Проверка бесплатной крутки
 function checkFreeSpin() {
     if (!lastFreeSpin) {
         freeSpinBtn.disabled = false;
@@ -112,99 +272,9 @@ function checkFreeSpin() {
     }
 }
 
-// Обновление таймера каждую минуту
-setInterval(checkFreeSpin, 60000);
-
-// Бесплатная крутка
-async function handleFreeSpin() {
-    if (!checkFreeSpin()) {
-        tg.showAlert('❌ Бесплатная крутка ещё недоступна!');
-        return;
-    }
-    
-    // Блокируем кнопки
-    freeSpinBtn.disabled = true;
-    paidSpinBtn.disabled = true;
-    
-    // Получаем выигрыш
-    const winAmount = getWinValue('free');
-    
-    // Анимируем
-    await spinWheel(winAmount);
-    
-    // Начисляем выигрыш
-    balance += winAmount;
-    updateBalanceUI();
-    
-    // Обновляем время последней бесплатной крутки
-    lastFreeSpin = Date.now();
-    localStorage.setItem('lastFreeSpin', lastFreeSpin);
-    
-    // Показываем результат
-    if (winAmount >= 100) {
-        resultDisplay.innerHTML = `🔥 ДЖЕКПОТ! +${winAmount}G 🔥`;
-        tg.HapticFeedback.impactOccurred('heavy');
-    } else if (winAmount >= 50) {
-        resultDisplay.innerHTML = `⚡ +${winAmount}G! ⚡`;
-        tg.HapticFeedback.impactOccurred('medium');
-    } else if (winAmount > 0) {
-        resultDisplay.innerHTML = `🎉 +${winAmount}G!`;
-        tg.HapticFeedback.impactOccurred('light');
-    } else {
-        resultDisplay.innerHTML = `💔 0G... Повезёт в следующий раз`;
-        tg.HapticFeedback.notificationOccurred('error');
-    }
-    
-    // Разблокируем кнопки
-    paidSpinBtn.disabled = false;
-    checkFreeSpin();
-}
-
-// Платная крутка
-async function handlePaidSpin() {
-    if (balance < SPIN_COST) {
-        tg.showAlert('❌ Недостаточно G!');
-        return;
-    }
-    
-    // Блокируем кнопки
-    freeSpinBtn.disabled = true;
-    paidSpinBtn.disabled = true;
-    
-    // Списываем плату
-    balance -= SPIN_COST;
-    updateBalanceUI();
-    
-    // Получаем выигрыш
-    const winAmount = getWinValue('paid');
-    
-    // Анимируем
-    await spinWheel(winAmount);
-    
-    // Начисляем выигрыш
-    balance += winAmount;
-    updateBalanceUI();
-    
-    // Показываем результат
-    if (winAmount >= 100) {
-        resultDisplay.innerHTML = `🔥 ДЖЕКПОТ! +${winAmount}G 🔥`;
-        tg.HapticFeedback.impactOccurred('heavy');
-    } else if (winAmount >= 50) {
-        resultDisplay.innerHTML = `⚡ +${winAmount}G! ⚡`;
-        tg.HapticFeedback.impactOccurred('medium');
-    } else if (winAmount > 0) {
-        resultDisplay.innerHTML = `🎉 +${winAmount}G!`;
-        tg.HapticFeedback.impactOccurred('light');
-    } else {
-        resultDisplay.innerHTML = `💔 0G... Повезёт в следующий раз`;
-        tg.HapticFeedback.notificationOccurred('error');
-    }
-    
-    // Разблокируем кнопки
-    freeSpinBtn.disabled = false;
-    paidSpinBtn.disabled = false;
-    checkFreeSpin();
-}
+// ============ ОБРАБОТЧИКИ СОБЫТИЙ ============
+freeSpinBtn.addEventListener('click', () => handleSpin('free'));
+paidSpinBtn.addEventListener('click', () => handleSpin('paid'));
 
 // Переключение табов
 document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -221,33 +291,15 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     });
 });
 
-// Загрузка сохранённых данных
-const savedBalance = localStorage.getItem(`balance_${user.id}`);
-const savedLastFreeSpin = localStorage.getItem(`lastFreeSpin_${user.id}`);
+// Обновление таймера каждую минуту
+setInterval(checkFreeSpin, 60000);
 
-if (savedBalance) {
-    balance = parseInt(savedBalance);
-    updateBalanceUI();
-}
+// Начальная отрисовка
+drawWheel(currentRotation);
 
-if (savedLastFreeSpin) {
-    lastFreeSpin = parseInt(savedLastFreeSpin);
-}
-
-// Обработчики кнопок
-freeSpinBtn.addEventListener('click', handleFreeSpin);
-paidSpinBtn.addEventListener('click', handlePaidSpin);
-
-// Сохранение при закрытии
+// Очистка анимации при уходе
 window.addEventListener('beforeunload', () => {
-    localStorage.setItem(`balance_${user.id}`, balance);
-    localStorage.setItem(`lastFreeSpin_${user.id}`, lastFreeSpin);
-    
-    tg.sendData(JSON.stringify({
-        balance: balance,
-        userId: user.id
-    }));
+    if (animationFrame) {
+        cancelAnimationFrame(animationFrame);
+    }
 });
-
-// Проверяем доступность бесплатной крутки при загрузке
-checkFreeSpin();

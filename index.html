@@ -12,7 +12,7 @@
         <!-- Профиль -->
         <div class="profile-card">
             <div class="profile-info">
-                <img id="userAvatar" src="https://ui-avatars.com/api/?name=User&background=ffd700&color=000" alt="avatar" class="avatar">
+                <img id="userAvatar" src="" alt="avatar" class="avatar">
                 <div class="user-details">
                     <span id="userName">Загрузка...</span>
                     <div class="balance-wrapper">
@@ -24,26 +24,18 @@
             </div>
         </div>
 
-        <!-- Барабан рулетки -->
-        <div class="wheel-container">
-            <div class="wheel" id="wheel">
-                <div class="sector" style="--rotation: 0deg;">0</div>
-                <div class="sector" style="--rotation: 45deg;">5</div>
-                <div class="sector" style="--rotation: 90deg;">10</div>
-                <div class="sector" style="--rotation: 135deg;">15</div>
-                <div class="sector" style="--rotation: 180deg;">25</div>
-                <div class="sector" style="--rotation: 225deg;">50</div>
-                <div class="sector" style="--rotation: 270deg;">100</div>
-                <div class="sector" style="--rotation: 315deg;">250</div>
-            </div>
-            <div class="wheel-pointer">▼</div>
+        <!-- Canvas рулетки -->
+        <div class="wheel-wrapper">
+            <canvas id="wheelCanvas" width="400" height="400"></canvas>
+            <div class="pointer">▼</div>
         </div>
 
+        <!-- Результат -->
         <div class="result-display" id="resultDisplay">
             🎲 Нажми крутить!
         </div>
 
-        <!-- Кнопки управления -->
+        <!-- Кнопки -->
         <div class="controls">
             <button id="freeSpinBtn" class="btn btn-free">
                 🎁 Бесплатно
@@ -54,7 +46,7 @@
             </button>
         </div>
 
-        <!-- Информация о шансах -->
+        <!-- Табы с шансами -->
         <div class="info-section">
             <div class="info-tabs">
                 <button class="tab-btn active" data-tab="free">🎁 Бесплатно</button>
