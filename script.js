@@ -12,7 +12,7 @@ let gameData = {
     freeSpinAvailable: true
 };
 
-// 8 ПРИЗОВ НА КОЛЕСЕ - РАВНЫЕ СЕКТОРА
+// 8 ПРИЗОВ НА КОЛЕСЕ - СТРОГО ПО ПОРЯДКУ
 const WHEEL_PRIZES = [
     { value: 0, text: '0 G', color: '#5d6d7e', class: 'sector-0' },
     { value: 5, text: '5 G', color: '#2ecc71', class: 'sector-5' },
@@ -24,120 +24,60 @@ const WHEEL_PRIZES = [
     { value: 250, text: '250 G', color: '#00bcd4', class: 'sector-250' }
 ];
 
-// Шансы для бесплатной крутки (70.89 + 15 + 7.5 + 4 + 1.8 + 0.7 + 0.1 + 0.01 = 100)
-const FREE_SPIN_CHANCES = {
-    0: 70.89,   // 0 G
-    5: 15,      // 5 G
-    10: 7.5,    // 10 G
-    15: 4,      // 15 G
-    25: 1.8,    // 25 G
-    50: 0.7,    // 50 G
-    100: 0.1,   // 100 G
-    250: 0.01   // 250 G
-};
+// Шансы для бесплатной крутки (В ТОЧНОСТИ КАК В ЗАДАНИИ)
+const FREE_SPIN_CHANCES = [
+    { value: 0, chance: 70.89 },
+    { value: 5, chance: 15 },
+    { value: 10, chance: 7.5 },
+    { value: 15, chance: 4 },
+    { value: 25, chance: 1.8 },
+    { value: 50, chance: 0.7 },
+    { value: 100, chance: 0.1 },
+    { value: 250, chance: 0.01 }
+];
 
-// Шансы для платной крутки за 10 G (50 + 17.4 + 15 + 10 + 5 + 2 + 0.5 + 0.1 = 100)
-const PAID_SPIN_CHANCES = {
-    0: 50,      // 0 G
-    5: 17.4,    // 5 G
-    10: 15,     // 10 G
-    15: 10,     // 15 G
-    25: 5,      // 25 G
-    50: 2,      // 50 G
-    100: 0.5,   // 100 G
-    250: 0.1    // 250 G
-};
+// Шансы для платной крутки (В ТОЧНОСТИ КАК В ЗАДАНИИ)
+const PAID_SPIN_CHANCES = [
+    { value: 0, chance: 50 },
+    { value: 5, chance: 17.4 },
+    { value: 10, chance: 15 },
+    { value: 15, chance: 10 },
+    { value: 25, chance: 5 },
+    { value: 50, chance: 2 },
+    { value: 100, chance: 0.5 },
+    { value: 250, chance: 0.1 }
+];
 
 // Spin costs
 const FREE_SPIN_COST = 0;
 const PAID_SPIN_COST = 10;
-
-// Free spin cooldown (4 hours in milliseconds)
 const FREE_SPIN_COOLDOWN = 4 * 60 * 60 * 1000;
 
 // Initialize game
 function initGame() {
-    console.log('🎡 Инициализация GoldBank Roulette...');
-    console.log('✅ Колесо с 8 секторами:', WHEEL_PRIZES.map(p => p.text).join(', '));
+    console.log('🎡 Инициализация...');
     
     if (tg) {
         tg.expand();
-        loadTelegramUserData();
-        
-        if (tg.HapticFeedback) {
-            window.haptic = tg.HapticFeedback;
-        }
     }
     
     loadSavedGame();
-    initWheel();
+    createWheel();
     setupEventListeners();
     updateUI();
     startTimer();
-    
-    console.log('✅ Игра готова! Баланс:', gameData.balance + ' G');
 }
 
-// Load Telegram user data
-function loadTelegramUserData() {
-    if (!tg || !tg.initDataUnsafe?.user) return;
-    
-    const user = tg.initDataUnsafe.user;
-    
-    document.getElementById('username').textContent = 
-        user.first_name || user.username || 'Игрок';
-    
-    if (user.photo_url) {
-        const avatar = document.getElementById('userAvatar');
-        avatar.innerHTML = `<img src="${user.photo_url}" alt="Avatar">`;
-    }
-}
-
-// Load saved game
-function loadSavedGame() {
-    try {
-        const saved = localStorage.getItem('goldBankRouletteSave');
-        if (saved) {
-            const parsed = JSON.parse(saved);
-            gameData = { ...gameData, ...parsed };
-            
-            if (gameData.lastFreeSpin) {
-                const now = Date.now();
-                const timeSinceLastFreeSpin = now - gameData.lastFreeSpin;
-                gameData.freeSpinAvailable = timeSinceLastFreeSpin >= FREE_SPIN_COOLDOWN;
-            }
-            
-            console.log('🎮 Игра загружена из сохранения');
-        }
-    } catch (e) {
-        console.error('❌ Ошибка загрузки:', e);
-    }
-}
-
-// Save game
-function saveGame() {
-    try {
-        localStorage.setItem('goldBankRouletteSave', JSON.stringify(gameData));
-        return true;
-    } catch (e) {
-        showNotification('❌ Ошибка сохранения');
-        return false;
-    }
-}
-
-// Initialize wheel with 8 equal sectors
-function initWheel() {
+// Create wheel with 8 sectors
+function createWheel() {
     const wheel = document.getElementById('wheel');
     wheel.innerHTML = '';
     
-    const totalSectors = WHEEL_PRIZES.length; // 8 секторов
-    const sectorAngle = 360 / totalSectors; // 45 градусов на сектор
+    const sectorAngle = 360 / 8; // 45 градусов
     
     WHEEL_PRIZES.forEach((prize, index) => {
         const sector = document.createElement('div');
         sector.className = `wheel-sector ${prize.class}`;
-        sector.dataset.value = prize.value;
-        sector.dataset.index = index;
         
         const rotateAngle = index * sectorAngle;
         sector.style.transform = `rotate(${rotateAngle}deg)`;
@@ -145,30 +85,25 @@ function initWheel() {
         const span = document.createElement('span');
         span.innerHTML = prize.text;
         span.style.color = getContrastColor(prize.color);
-        sector.appendChild(span);
         
+        sector.appendChild(span);
         wheel.appendChild(sector);
     });
     
-    console.log('✅ Колесо создано с 8 секторами');
+    console.log('✅ Колесо создано: 8 секторов');
 }
 
 // Setup event listeners
 function setupEventListeners() {
-    document.getElementById('spinBtn').addEventListener('click', () => spinWheel(false));
-    document.getElementById('freeSpinBtn').addEventListener('click', () => spinWheel(true));
+    document.getElementById('spinBtn').onclick = () => spinWheel(false);
+    document.getElementById('freeSpinBtn').onclick = () => spinWheel(true);
 }
 
 // Update UI
 function updateUI() {
-    // Balance
     document.getElementById('balance').textContent = gameData.balance;
     document.getElementById('goldAmount').textContent = gameData.balance + ' G';
-    
-    // Update spin cost display
     document.getElementById('spinCost').textContent = PAID_SPIN_COST;
-    
-    // Stats
     document.getElementById('totalSpins').textContent = gameData.totalSpins;
     document.getElementById('totalWon').textContent = gameData.totalWon + ' G';
     document.getElementById('maxWin').textContent = gameData.maxWin + ' G';
@@ -178,30 +113,40 @@ function updateUI() {
         : 0;
     document.getElementById('luckRate').textContent = luckRate + '%';
     
-    // Update buttons
-    updateSpinButton();
-    updateFreeSpinButton();
+    document.getElementById('spinBtn').disabled = gameData.balance < PAID_SPIN_COST;
+    document.getElementById('freeSpinBtn').disabled = !gameData.freeSpinAvailable;
 }
 
-// Update spin button
-function updateSpinButton() {
-    const spinBtn = document.getElementById('spinBtn');
-    spinBtn.disabled = gameData.balance < PAID_SPIN_COST;
+// Load saved game
+function loadSavedGame() {
+    try {
+        const saved = localStorage.getItem('goldBankSave');
+        if (saved) {
+            const parsed = JSON.parse(saved);
+            gameData = { ...gameData, ...parsed };
+            
+            if (gameData.lastFreeSpin) {
+                const now = Date.now();
+                gameData.freeSpinAvailable = (now - gameData.lastFreeSpin) >= FREE_SPIN_COOLDOWN;
+            }
+        }
+    } catch (e) {}
 }
 
-// Update free spin button
-function updateFreeSpinButton() {
-    const freeSpinBtn = document.getElementById('freeSpinBtn');
-    freeSpinBtn.disabled = !gameData.freeSpinAvailable;
+// Save game
+function saveGame() {
+    try {
+        localStorage.setItem('goldBankSave', JSON.stringify(gameData));
+    } catch (e) {}
 }
 
-// Start timer for free spin
+// Start timer
 function startTimer() {
     updateFreeSpinTimer();
     setInterval(updateFreeSpinTimer, 1000);
 }
 
-// Update free spin timer
+// Update timer
 function updateFreeSpinTimer() {
     const timerElement = document.getElementById('freeSpinTimer');
     
@@ -212,44 +157,36 @@ function updateFreeSpinTimer() {
     }
     
     const now = Date.now();
-    const timeSinceLastFreeSpin = now - gameData.lastFreeSpin;
-    const timeLeft = FREE_SPIN_COOLDOWN - timeSinceLastFreeSpin;
+    const timeLeft = FREE_SPIN_COOLDOWN - (now - gameData.lastFreeSpin);
     
     if (timeLeft <= 0) {
         gameData.freeSpinAvailable = true;
-        updateFreeSpinButton();
+        document.getElementById('freeSpinBtn').disabled = false;
         timerElement.textContent = 'Доступно сейчас';
         timerElement.style.color = '#2ecc71';
         showNotification('🎁 Бесплатный спин доступен!');
         return;
     }
     
-    const hours = Math.floor(timeLeft / (60 * 60 * 1000));
-    const minutes = Math.floor((timeLeft % (60 * 60 * 1000)) / (60 * 1000));
-    const seconds = Math.floor((timeLeft % (60 * 1000)) / 1000);
+    const hours = Math.floor(timeLeft / 3600000);
+    const minutes = Math.floor((timeLeft % 3600000) / 60000);
+    const seconds = Math.floor((timeLeft % 60000) / 1000);
     
-    timerElement.textContent = 
-        `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    timerElement.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     timerElement.style.color = '#ff4444';
 }
 
-// Get random prize based on chances
+// Get random prize
 function getRandomPrize(chances) {
-    const prizes = Object.keys(chances).map(value => ({
-        value: parseInt(value),
-        chance: chances[value]
-    }));
-    
-    const totalChance = prizes.reduce((sum, prize) => sum + prize.chance, 0);
+    const totalChance = chances.reduce((sum, p) => sum + p.chance, 0);
     let random = Math.random() * totalChance;
     
-    for (const prize of prizes) {
+    for (const prize of chances) {
         if (random < prize.chance) {
             return prize.value;
         }
         random -= prize.chance;
     }
-    
     return 0;
 }
 
@@ -259,156 +196,102 @@ let isSpinning = false;
 function spinWheel(isFree) {
     if (isSpinning) return;
     
-    const spinCost = isFree ? FREE_SPIN_COST : PAID_SPIN_COST;
     const chances = isFree ? FREE_SPIN_CHANCES : PAID_SPIN_CHANCES;
     
-    if (!isFree && gameData.balance < spinCost) {
-        showNotification(`❌ Недостаточно G для спина! Нужно ${spinCost} G`);
+    // Проверка баланса
+    if (!isFree && gameData.balance < PAID_SPIN_COST) {
+        showNotification('❌ Недостаточно G!');
         return;
     }
     
     if (isFree && !gameData.freeSpinAvailable) {
-        showNotification('⏳ Бесплатный спин еще не доступен!');
+        showNotification('⏳ Бесплатный спин недоступен!');
         return;
     }
     
     isSpinning = true;
     
+    // Списание
     if (!isFree) {
-        gameData.balance -= spinCost;
+        gameData.balance -= PAID_SPIN_COST;
     } else {
         gameData.lastFreeSpin = Date.now();
         gameData.freeSpinAvailable = false;
     }
     
     gameData.totalSpins++;
-    
     updateUI();
-    playSound('spinSound');
     
-    // Получаем случайный выигрыш
+    // Получаем выигрыш
     const winAmount = getRandomPrize(chances);
-    console.log(`🎯 Выпало: ${winAmount} G (${isFree ? 'бесплатный' : 'платный'})`);
+    console.log(`🎯 Выпало: ${winAmount} G`);
     
-    // Находим индекс этого приза на колесе
+    // Находим индекс на колесе
     const prizeIndex = WHEEL_PRIZES.findIndex(p => p.value === winAmount);
-    
-    if (prizeIndex === -1) {
-        console.error('❌ Ошибка: приз не найден на колесе!', winAmount);
-        isSpinning = false;
-        return;
-    }
-    
-    console.log(`🎡 Индекс на колесе: ${prizeIndex} (${WHEEL_PRIZES[prizeIndex].text})`);
+    console.log(`🎡 Сектор: ${prizeIndex} (${WHEEL_PRIZES[prizeIndex].text})`);
     
     // Вращаем колесо
-    rotateWheelToPrize(prizeIndex, () => {
-        processSpinResult(winAmount, isFree);
-        isSpinning = false;
-        updateUI();
-        saveGame();
-    });
-}
-
-// Rotate wheel to specific prize index
-function rotateWheelToPrize(prizeIndex, callback) {
     const wheel = document.getElementById('wheel');
-    const totalSectors = WHEEL_PRIZES.length; // 8 секторов
-    const sectorAngle = 360 / totalSectors; // 45 градусов
+    const sectorAngle = 360 / 8;
     
-    // Количество полных оборотов
-    const fullRotations = 5;
+    // ПРОСТАЯ ФОРМУЛА: 5 оборотов + позиция сектора
+    const stopAngle = 1800 + (prizeIndex * 45) + 22.5;
     
-    // Рассчитываем угол остановки
-    // Указатель наверху (0 градусов)
-    // Нужно чтобы сектор prizeIndex оказался под указателем
-    const stopAngle = (fullRotations * 360) + (360 - (prizeIndex * sectorAngle) - (sectorAngle / 2));
-    
-    // Reset wheel position
-    wheel.style.transition = 'none';
-    wheel.style.transform = 'rotate(0deg)';
-    
-    // Force reflow
-    void wheel.offsetWidth;
-    
-    // Start spinning animation
-    wheel.style.transition = 'transform 3s cubic-bezier(0.2, 0.8, 0.3, 1)';
+    wheel.style.transition = 'transform 3s';
     wheel.style.transform = `rotate(${stopAngle}deg)`;
     
-    // Callback after animation completes
-    setTimeout(callback, 3000);
+    // Обработка результата
+    setTimeout(() => {
+        // Начисляем выигрыш
+        if (winAmount > 0) {
+            gameData.balance += winAmount;
+            gameData.totalWon += winAmount;
+            gameData.wins++;
+            
+            if (winAmount > gameData.maxWin) {
+                gameData.maxWin = winAmount;
+            }
+        }
+        
+        // Показываем сообщение
+        let message = '';
+        if (winAmount === 250) message = '🏆 СУПЕР ДЖЕКПОТ! +250 G!';
+        else if (winAmount === 100) message = '🎉 МЕГА ВЫИГРЫШ! +100 G!';
+        else if (winAmount === 50) message = '💰 БОЛЬШОЙ ВЫИГРЫШ! +50 G!';
+        else if (winAmount === 25) message = '🎊 Отлично! +25 G!';
+        else if (winAmount === 15) message = '🎯 Хорошо! +15 G!';
+        else if (winAmount === 10) message = '👍 Неплохо! +10 G!';
+        else if (winAmount === 5) message = '👌 +5 G!';
+        else message = '😔 Вы ничего не выиграли';
+        
+        if (isFree) message += ' (Бесплатно)';
+        
+        showNotification(message);
+        
+        if (winAmount >= 50) {
+            showWinEffect();
+            playSound('winSound');
+        } else if (winAmount > 0) {
+            playSound('winSound');
+        } else {
+            playSound('loseSound');
+        }
+        
+        updateUI();
+        saveGame();
+        isSpinning = false;
+    }, 3000);
 }
 
-// Process spin result
-function processSpinResult(winAmount, isFree) {
-    // Обновляем статистику
-    if (winAmount > 0) {
-        gameData.balance += winAmount;
-        gameData.totalWon += winAmount;
-        gameData.wins++;
-    }
+// Show notification
+function showNotification(message) {
+    const notification = document.getElementById('notification');
+    notification.textContent = message;
+    notification.style.display = 'block';
     
-    if (winAmount > gameData.maxWin) {
-        gameData.maxWin = winAmount;
-    }
-    
-    // Показываем уведомление
-    let message = '';
-    
-    switch (winAmount) {
-        case 250:
-            message = `🏆 СУПЕР ДЖЕКПОТ! +250 G!`;
-            playSound('winSound');
-            showWinEffect();
-            break;
-        case 100:
-            message = `🎉 МЕГА ВЫИГРЫШ! +100 G!`;
-            playSound('winSound');
-            showWinEffect();
-            break;
-        case 50:
-            message = `💰 БОЛЬШОЙ ВЫИГРЫШ! +50 G!`;
-            playSound('winSound');
-            showWinEffect();
-            break;
-        case 25:
-            message = `🎊 Отлично! +25 G!`;
-            playSound('winSound');
-            break;
-        case 15:
-            message = `🎯 Хорошо! +15 G!`;
-            playSound('winSound');
-            break;
-        case 10:
-            message = `👍 Неплохо! +10 G!`;
-            playSound('winSound');
-            break;
-        case 5:
-            message = `👌 Хороший старт! +5 G!`;
-            playSound('winSound');
-            break;
-        case 0:
-            message = `😔 Вы ничего не выиграли`;
-            playSound('loseSound');
-            break;
-    }
-    
-    if (isFree) {
-        message += ' (Бесплатный спин)';
-    }
-    
-    showNotification(message);
-    
-    // Haptic feedback
-    if (window.haptic) {
-        if (winAmount >= 100) {
-            window.haptic.impactOccurred('heavy');
-        } else if (winAmount >= 25) {
-            window.haptic.impactOccurred('medium');
-        } else if (winAmount > 0) {
-            window.haptic.impactOccurred('light');
-        }
-    }
+    setTimeout(() => {
+        notification.style.display = 'none';
+    }, 3000);
 }
 
 // Show win effect
@@ -421,21 +304,6 @@ function showWinEffect() {
     }, 1000);
 }
 
-// Show notification
-function showNotification(message) {
-    const notification = document.getElementById('notification');
-    notification.textContent = message;
-    notification.style.display = 'block';
-    notification.style.animation = 'slideIn 0.3s ease';
-    
-    setTimeout(() => {
-        notification.style.animation = 'slideOut 0.3s ease';
-        setTimeout(() => {
-            notification.style.display = 'none';
-        }, 300);
-    }, 4000);
-}
-
 // Play sound
 function playSound(soundId) {
     try {
@@ -443,23 +311,19 @@ function playSound(soundId) {
         if (sound) {
             sound.currentTime = 0;
             sound.volume = 0.3;
-            sound.play().catch(e => console.log('Sound error:', e));
+            sound.play();
         }
-    } catch (e) {
-        // Ignore sound errors
-    }
+    } catch (e) {}
 }
 
-// Helper function for contrast color
+// Get contrast color
 function getContrastColor(hexcolor) {
     hexcolor = hexcolor.replace("#", "");
     const r = parseInt(hexcolor.substr(0, 2), 16);
     const g = parseInt(hexcolor.substr(2, 2), 16);
     const b = parseInt(hexcolor.substr(4, 2), 16);
-    
-    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-    return brightness > 128 ? '#000000' : '#FFFFFF';
+    return (r * 299 + g * 587 + b * 114) / 1000 > 128 ? '#000000' : '#FFFFFF';
 }
 
-// Initialize game when DOM is loaded
+// Start game
 document.addEventListener('DOMContentLoaded', initGame);

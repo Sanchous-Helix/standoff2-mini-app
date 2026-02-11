@@ -11,22 +11,6 @@ body {
     color: white;
     min-height: 100vh;
     padding: 10px;
-    position: relative;
-    overflow-x: hidden;
-}
-
-body::before {
-    content: '';
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: 
-        radial-gradient(circle at 20% 80%, rgba(255, 215, 0, 0.1) 0%, transparent 50%),
-        radial-gradient(circle at 80% 20%, rgba(255, 215, 0, 0.05) 0%, transparent 50%);
-    pointer-events: none;
-    z-index: -1;
 }
 
 /* Container */
@@ -46,7 +30,6 @@ body::before {
     border-radius: 15px;
     margin-bottom: 15px;
     border: 1px solid rgba(255, 215, 0, 0.3);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .user-section {
@@ -96,10 +79,6 @@ body::before {
     color: #ffd700;
 }
 
-.balance i {
-    font-size: 22px;
-}
-
 /* Gold Section */
 .gold-section {
     background: linear-gradient(135deg, #1a1d24, #13161b);
@@ -107,7 +86,6 @@ body::before {
     padding: 20px;
     margin-bottom: 15px;
     border: 1px solid rgba(255, 215, 0, 0.3);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     text-align: center;
 }
 
@@ -116,7 +94,6 @@ body::before {
     color: #ffd700;
     margin-bottom: 15px;
     text-transform: uppercase;
-    letter-spacing: 1px;
 }
 
 .gold-amount {
@@ -132,14 +109,13 @@ body::before {
     color: #aaa;
 }
 
-/* Wheel Section - 8 СЕКТОРОВ */
+/* Wheel Section */
 .wheel-section {
     background: linear-gradient(135deg, #1a1d24, #13161b);
     border-radius: 20px;
     padding: 20px;
     margin-bottom: 15px;
     border: 2px solid rgba(255, 215, 0, 0.4);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     text-align: center;
 }
 
@@ -148,7 +124,6 @@ body::before {
     color: #ffd700;
     margin-bottom: 20px;
     text-transform: uppercase;
-    letter-spacing: 2px;
 }
 
 .wheel-container {
@@ -165,14 +140,10 @@ body::before {
     position: relative;
     overflow: hidden;
     border: 10px solid #ffd700;
-    box-shadow: 
-        inset 0 0 20px rgba(0, 0, 0, 0.5),
-        0 0 30px rgba(255, 215, 0, 0.3);
-    transition: transform 3s cubic-bezier(0.1, 0.7, 0.1, 1);
-    will-change: transform;
+    transition: transform 3s cubic-bezier(0.2, 0.8, 0.3, 1);
 }
 
-/* Стили для 8 равных секторов */
+/* 8 равных секторов */
 .wheel-sector {
     position: absolute;
     width: 50%;
@@ -183,26 +154,19 @@ body::before {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: bold;
-    color: white;
-    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
-    overflow: hidden;
     border-right: 2px solid rgba(0, 0, 0, 0.3);
-    box-sizing: border-box;
 }
 
 .wheel-sector span {
     transform: rotate(45deg);
-    font-size: 13px;
+    font-size: 14px;
     font-weight: bold;
     text-align: center;
     padding-left: 35px;
     padding-top: 20px;
     width: 100px;
-    text-shadow: 
-        1px 1px 3px rgba(0, 0, 0, 0.8),
-        -1px -1px 2px rgba(0, 0, 0, 0.5);
-    letter-spacing: 0.5px;
+    color: white;
+    text-shadow: 1px 1px 3px black;
 }
 
 .wheel-center {
@@ -216,9 +180,6 @@ body::before {
     border-radius: 50%;
     z-index: 10;
     border: 5px solid #1a1d24;
-    box-shadow: 
-        0 0 20px rgba(255, 215, 0, 0.8),
-        inset 0 0 10px rgba(0, 0, 0, 0.3);
 }
 
 .wheel-pointer {
@@ -229,17 +190,9 @@ body::before {
     z-index: 20;
     color: #ff4444;
     font-size: 45px;
-    text-shadow: 0 0 15px rgba(255, 68, 68, 0.8);
-    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5));
 }
 
 /* Controls */
-.controls {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-
 .spin-btn {
     padding: 18px 30px;
     background: linear-gradient(135deg, #ff4444, #ff6666);
@@ -249,23 +202,8 @@ body::before {
     font-size: 18px;
     font-weight: bold;
     cursor: pointer;
-    transition: all 0.3s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    box-shadow: 0 4px 15px rgba(255, 68, 68, 0.4);
+    width: 100%;
     text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
-.spin-btn:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(255, 68, 68, 0.6);
-}
-
-.spin-btn:active:not(:disabled) {
-    transform: translateY(0);
 }
 
 .spin-btn:disabled {
@@ -291,7 +229,6 @@ body::before {
     padding: 15px;
     margin-bottom: 15px;
     border: 1px solid rgba(46, 204, 113, 0.3);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     text-align: center;
 }
 
@@ -299,10 +236,6 @@ body::before {
     color: #2ecc71;
     font-size: 16px;
     margin-bottom: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
 }
 
 .free-spin-btn {
@@ -314,18 +247,7 @@ body::before {
     font-size: 16px;
     font-weight: bold;
     cursor: pointer;
-    transition: all 0.3s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
     width: 100%;
-    box-shadow: 0 4px 15px rgba(46, 204, 113, 0.4);
-}
-
-.free-spin-btn:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(46, 204, 113, 0.6);
 }
 
 .free-spin-btn:disabled {
@@ -345,8 +267,7 @@ body::before {
     background: linear-gradient(135deg, #1a1d24, #13161b);
     border-radius: 15px;
     padding: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    margin-top: 15px;
 }
 
 .stats-title {
@@ -366,9 +287,6 @@ body::before {
     background: rgba(255, 255, 255, 0.05);
     border-radius: 10px;
     padding: 12px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
     text-align: center;
 }
 
@@ -384,6 +302,16 @@ body::before {
     font-weight: bold;
 }
 
+/* 8 цветов для секторов */
+.sector-0 { background: linear-gradient(135deg, #5d6d7e, #3d4d5e); }
+.sector-5 { background: linear-gradient(135deg, #2ecc71, #27ae60); }
+.sector-10 { background: linear-gradient(135deg, #3498db, #2980b9); }
+.sector-15 { background: linear-gradient(135deg, #9b59b6, #8e44ad); }
+.sector-25 { background: linear-gradient(135deg, #f39c12, #d68910); }
+.sector-50 { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+.sector-100 { background: linear-gradient(135deg, #e91e63, #c2185b); }
+.sector-250 { background: linear-gradient(135deg, #00bcd4, #0097a7); }
+
 /* Notification */
 .notification {
     position: fixed;
@@ -396,33 +324,7 @@ body::before {
     border-left: 4px solid #ffd700;
     z-index: 1000;
     max-width: 300px;
-    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
     display: none;
-    animation: slideIn 0.3s ease;
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 215, 0, 0.3);
-}
-
-@keyframes slideIn {
-    from {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
-}
-
-@keyframes slideOut {
-    from {
-        transform: translateX(0);
-        opacity: 1;
-    }
-    to {
-        transform: translateX(100%);
-        opacity: 0;
-    }
 }
 
 /* Win Effect */
@@ -435,14 +337,7 @@ body::before {
     background: radial-gradient(circle, rgba(255,215,0,0.2) 0%, transparent 70%);
     pointer-events: none;
     z-index: 50;
-    opacity: 0;
-    animation: winPulse 1s ease-out;
-}
-
-@keyframes winPulse {
-    0% { opacity: 0; transform: scale(0.5); }
-    50% { opacity: 1; transform: scale(1); }
-    100% { opacity: 0; transform: scale(1.2); }
+    display: none;
 }
 
 /* Footer */
@@ -454,54 +349,16 @@ body::before {
     margin-top: 15px;
 }
 
-/* 8 ЦВЕТНЫХ СЕКТОРОВ - ПО ОДНОМУ ДЛЯ КАЖДОГО ПРИЗА */
-.sector-0 { 
-    background: linear-gradient(135deg, #5d6d7e, #3d4d5e); 
-}
-.sector-5 { 
-    background: linear-gradient(135deg, #2ecc71, #27ae60); 
-}
-.sector-10 { 
-    background: linear-gradient(135deg, #3498db, #2980b9); 
-}
-.sector-15 { 
-    background: linear-gradient(135deg, #9b59b6, #8e44ad); 
-}
-.sector-25 { 
-    background: linear-gradient(135deg, #f39c12, #d68910); 
-}
-.sector-50 { 
-    background: linear-gradient(135deg, #e74c3c, #c0392b); 
-}
-.sector-100 { 
-    background: linear-gradient(135deg, #e91e63, #c2185b); 
-}
-.sector-250 { 
-    background: linear-gradient(135deg, #00bcd4, #0097a7); 
-}
-
-/* Улучшенная читаемость для мобильных */
+/* Responsive */
 @media (max-width: 480px) {
-    .container {
-        padding: 5px;
-    }
-    
     .wheel-container {
         width: 250px;
         height: 250px;
     }
     
-    .wheel {
-        border-width: 8px;
-    }
-    
     .wheel-sector span {
-        font-size: 11px;
-        padding-left: 28px;
-        padding-top: 12px;
-    }
-    
-    .stats-grid {
-        grid-template-columns: 1fr;
+        font-size: 12px;
+        padding-left: 30px;
+        padding-top: 15px;
     }
 }
