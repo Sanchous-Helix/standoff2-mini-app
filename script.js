@@ -1,53 +1,42 @@
-// Инициализация Telegram
+// Telegram WebApp
 const tg = window.Telegram.WebApp;
 tg.ready();
 tg.expand();
 
-// ============ АВАРИЙНАЯ ОЧИСТКА ============
-const APP_VERSION = '2.0';
-const VERSION_KEY = 'standoff_roulette_version';
+// ============ ЖЁСТКАЯ ФИКСАЦИЯ ДАННЫХ ============
+const APP_VERSION = '3.0_final';
+const STORAGE_KEY = 'standoff2_roulette';
 
-if (localStorage.getItem(VERSION_KEY) !== APP_VERSION) {
-    localStorage.clear();
-    localStorage.setItem(VERSION_KEY, APP_VERSION);
-    console.log('✨ Полный сброс данных');
+// ПОЛНЫЙ СБРОС ВСЕХ СТАРЫХ ДАННЫХ
+for (let key in localStorage) {
+    if (key.includes('balance') || key.includes('spin') || key.includes('standoff')) {
+        localStorage.removeItem(key);
+    }
 }
 
-// ============ КОНФИГУРАЦИЯ - СТАБИЛЬНАЯ ============
+// ============ НАСТРОЙКИ ============
 const SECTORS = [
-    { value: 0, color: '#e74c3c', label: '0' },     // 0°
-    { value: 5, color: '#e67e22', label: '5' },     // 45°
-    { value: 10, color: '#f1c40f', label: '10' },   // 90°
-    { value: 15, color: '#2ecc71', label: '15' },   // 135°
-    { value: 25, color: '#3498db', label: '25' },   // 180°
-    { value: 50, color: '#9b59b6', label: '50' },   // 225°
-    { value: 100, color: '#e84342', label: '100' }, // 270°
-    { value: 250, color: '#c0392b', label: '250' }  // 315°
+    { value: 250, color: '#c0392b', label: '250' }, // 0°   - ДЖЕКПОТ
+    { value: 100, color: '#e84342', label: '100' }, // 45°
+    { value: 50, color: '#9b59b6', label: '50' },   // 90°
+    { value: 25, color: '#3498db', label: '25' },   // 135°
+    { value: 15, color: '#2ecc71', label: '15' },   // 180°
+    { value: 10, color: '#f1c40f', label: '10' },   // 225°
+    { value: 5, color: '#e67e22', label: '5' },     // 270°
+    { value: 0, color: '#e74c3c', label: '0' }      // 315°
 ];
 
 // Шансы для бесплатной крутки
-const FREE_CHANCES = [
-    70.89,  // 0G
-    15,     // 5G
-    7.5,    // 10G
-    4,      // 15G
-    1.8,    // 25G
-    0.7,    // 50G
-    0.1,    // 100G
-    0.01    // 250G
-];
+const FREE_CHANCES = {
+    values: [0, 5, 10, 15, 25, 50, 100, 250],
+    chances: [70.89, 15, 7.5, 4, 1.8, 0.7, 0.1, 0.01]
+};
 
 // Шансы для платной крутки
-const PAID_CHANCES = [
-    50,     // 0G
-    17.4,   // 5G
-    15,     // 10G
-    10,     // 15G
-    5,      // 25G
-    2,      // 50G
-    0.5,    // 100G
-    0.1     // 250G
-];
+const PAID_CHANCES = {
+    values: [0, 5, 10, 15, 25, 50, 100, 250],
+    chances: [50, 17.4, 15, 10, 5, 2, 0.5, 0.1]
+};
 
 const SPIN_COST = 10;
 const COOLDOWN_HOURS = 24;
@@ -57,198 +46,109 @@ let balance = 100;
 let lastFreeSpin = null;
 let isSpinning = false;
 let currentRotation = 0;
-let animationFrame = null;
+let spinTimeout = null;
 
 // Данные пользователя
 const user = tg.initDataUnsafe?.user || {
     first_name: 'Игрок',
-    id: 'guest_' + Math.floor(Math.random() * 1000000)
+    id: 'guest_' + Date.now()
 };
 
 // ============ DOM ЭЛЕМЕНТЫ ============
-const canvas = document.getElementById('wheelCanvas');
-const ctx = canvas.getContext('2d');
+const wheel = document.getElementById('wheel');
 const balanceEl = document.getElementById('balance');
 const userNameEl = document.getElementById('userName');
 const userAvatar = document.getElementById('userAvatar');
-const resultDisplay = document.getElementById('resultDisplay');
+const resultAmount = document.getElementById('resultAmount');
 const freeSpinBtn = document.getElementById('freeSpinBtn');
 const paidSpinBtn = document.getElementById('paidSpinBtn');
 const freeTimer = document.getElementById('freeTimer');
+const chancesDisplay = document.getElementById('chancesDisplay');
 
 // ============ ИНИЦИАЛИЗАЦИЯ ============
 userNameEl.textContent = user.first_name + (user.last_name ? ' ' + user.last_name : '');
 userAvatar.src = user.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.first_name)}&background=ffd700&color=000&size=128`;
 
 // ============ НОВАЯ СИСТЕМА СОХРАНЕНИЯ ============
-function saveGameData() {
-    const gameData = {
+function saveData() {
+    const data = {
         balance: balance,
         lastFreeSpin: lastFreeSpin,
-        version: APP_VERSION
+        version: APP_VERSION,
+        userId: user.id
     };
-    localStorage.setItem(`standoff_${user.id}`, JSON.stringify(gameData));
-    console.log('💾 Сохранено:', gameData);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    console.log('💾 Сохранено');
 }
 
-function loadGameData() {
-    const saved = localStorage.getItem(`standoff_${user.id}`);
+function loadData() {
+    const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
         try {
             const data = JSON.parse(saved);
-            if (data.version === APP_VERSION) {
+            if (data.version === APP_VERSION && data.userId === user.id) {
                 balance = data.balance || 100;
                 lastFreeSpin = data.lastFreeSpin || null;
-                console.log('📂 Загружено:', data);
-            } else {
-                console.log('🆕 Устаревшие данные, используем дефолт');
+                console.log('📂 Загружено');
             }
-        } catch (e) {
-            console.error('❌ Ошибка загрузки');
-        }
+        } catch (e) {}
     }
 }
 
-// Загружаем данные
-loadGameData();
-
-// Сохраняем при выходе
-window.addEventListener('beforeunload', () => {
-    saveGameData();
-});
-
+loadData();
 updateBalanceUI();
+updateChancesDisplay('free');
 checkFreeSpin();
 
-// ============ ОТРИСОВКА БАРАБАНА ============
-function drawWheel(rotationAngle = 0) {
-    const width = canvas.width;
-    const height = canvas.height;
-    const centerX = width / 2;
-    const centerY = height / 2;
-    const radius = Math.min(width, height) / 2 - 10;
-    
-    ctx.clearRect(0, 0, width, height);
-    
-    const anglePerSector = (Math.PI * 2) / SECTORS.length;
-    
-    for (let i = 0; i < SECTORS.length; i++) {
-        const startAngle = i * anglePerSector + rotationAngle;
-        const endAngle = startAngle + anglePerSector;
-        
-        ctx.beginPath();
-        ctx.moveTo(centerX, centerY);
-        ctx.arc(centerX, centerY, radius, startAngle, endAngle);
-        ctx.closePath();
-        
-        ctx.fillStyle = SECTORS[i].color;
-        ctx.fill();
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        
-        // Текст
-        ctx.save();
-        ctx.translate(centerX, centerY);
-        
-        const textAngle = startAngle + anglePerSector / 2;
-        const textRadius = radius * 0.65;
-        const x = Math.cos(textAngle) * textRadius;
-        const y = Math.sin(textAngle) * textRadius;
-        
-        ctx.translate(x, y);
-        
-        if (textAngle % (Math.PI * 2) > Math.PI/2 && textAngle % (Math.PI * 2) < Math.PI * 3/2) {
-            ctx.rotate(textAngle + Math.PI);
-        } else {
-            ctx.rotate(textAngle);
-        }
-        
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.font = 'bold 22px Arial';
-        ctx.fillStyle = '#fff';
-        ctx.shadowColor = '#000';
-        ctx.shadowBlur = 6;
-        ctx.fillText(SECTORS[i].label, 0, 0);
-        ctx.restore();
-    }
-    
-    // Центр
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, 25, 0, Math.PI * 2);
-    ctx.fillStyle = '#ffd700';
-    ctx.shadowBlur = 15;
-    ctx.fill();
-    ctx.shadowBlur = 0;
-}
-
-// ============ ВЫБОР ВЫИГРЫША ============
-function getWinIndex(isPaid) {
-    const chances = isPaid ? PAID_CHANCES : FREE_CHANCES;
+// ============ ВЫБОР ВЫИГРЫША - АБСОЛЮТНО ЧЕСТНО ============
+function getWinAmount(isPaid) {
+    const table = isPaid ? PAID_CHANCES : FREE_CHANCES;
     const rand = Math.random() * 100;
     let cumulative = 0;
     
-    for (let i = 0; i < chances.length; i++) {
-        cumulative += chances[i];
+    for (let i = 0; i < table.chances.length; i++) {
+        cumulative += table.chances[i];
         if (rand < cumulative) {
-            const winValue = SECTORS[i].value;
-            console.log(`🎲 Выигрыш: ${winValue}G (сектор ${i}, шанс ${chances[i]}%)`);
-            return i;
+            const winValue = table.values[i];
+            console.log(`🎲 ВЫИГРЫШ: ${winValue}G (рандом: ${rand.toFixed(2)}%)`);
+            return winValue;
         }
     }
     return 0;
 }
 
-// ============ АНИМАЦИЯ ВРАЩЕНИЯ ============
-function spinWheel(targetIndex) {
-    return new Promise((resolve) => {
-        if (isSpinning) return resolve();
-        
-        isSpinning = true;
-        
-        const targetAngle = (targetIndex * 45 + 22.5) * Math.PI / 180;
-        const spins = 8;
-        const startAngle = currentRotation;
-        
-        let deltaAngle = (spins * Math.PI * 2) + targetAngle;
-        deltaAngle = deltaAngle - (currentRotation % (Math.PI * 2));
-        const finalAngle = currentRotation + deltaAngle;
-        
-        const startTime = performance.now();
-        const duration = 3000;
-        
-        function animate(currentTime) {
-            const elapsed = currentTime - startTime;
-            const progress = Math.min(elapsed / duration, 1);
-            const easeOut = 1 - Math.pow(1 - progress, 3);
-            const currentAngle = startAngle + (finalAngle - startAngle) * easeOut;
-            
-            drawWheel(currentAngle);
-            
-            if (progress < 1) {
-                animationFrame = requestAnimationFrame(animate);
-            } else {
-                currentRotation = finalAngle % (Math.PI * 2);
-                drawWheel(currentRotation);
-                isSpinning = false;
-                resolve();
-            }
-        }
-        
-        animationFrame = requestAnimationFrame(animate);
+// ============ ВРАЩЕНИЕ К ВЫИГРЫШУ ============
+function spinToWin(winValue) {
+    // Находим индекс сектора с нужным значением
+    const targetIndex = SECTORS.findIndex(s => s.value === winValue);
+    if (targetIndex === -1) return;
+    
+    // Вычисляем угол для остановки
+    const targetAngle = targetIndex * 45; // 0°, 45°, 90°, ...
+    const spins = 8; // Количество оборотов
+    const finalAngle = spins * 360 + targetAngle;
+    
+    // Применяем вращение
+    wheel.style.transform = `rotate(${finalAngle}deg)`;
+    currentRotation = finalAngle % 360;
+    
+    return new Promise(resolve => {
+        if (spinTimeout) clearTimeout(spinTimeout);
+        spinTimeout = setTimeout(() => {
+            resolve();
+        }, 3000);
     });
 }
 
 // ============ ОБРАБОТКА КРУТКИ ============
 async function handleSpin(isPaid) {
     if (isSpinning) {
-        tg.showAlert('⏳ Барабан уже крутится!');
+        tg.showAlert('⏳ Колесо крутится!');
         return;
     }
     
     if (!isPaid && !checkFreeSpin()) {
-        tg.showAlert('❌ Бесплатная крутка ещё недоступна!');
+        tg.showAlert('❌ Бесплатная крутка через ' + freeTimer.textContent);
         return;
     }
     
@@ -257,61 +157,69 @@ async function handleSpin(isPaid) {
         return;
     }
     
+    // Блокируем кнопки
+    isSpinning = true;
     freeSpinBtn.disabled = true;
     paidSpinBtn.disabled = true;
     
+    // Списываем плату
     if (isPaid) {
         balance -= SPIN_COST;
         updateBalanceUI();
     }
     
-    const winIndex = getWinIndex(isPaid);
-    const winAmount = SECTORS[winIndex].value;
+    // ВЫБИРАЕМ ВЫИГРЫШ
+    const winAmount = getWinAmount(isPaid);
     
-    resultDisplay.innerHTML = '🎰 Крутим...';
-    await spinWheel(winIndex);
+    // Очищаем результат
+    resultAmount.textContent = '...';
     
+    // КРУТИМ КОЛЕСО
+    await spinToWin(winAmount);
+    
+    // ПОКАЗЫВАЕМ РЕЗУЛЬТАТ
+    resultAmount.textContent = `+${winAmount} G`;
+    
+    // АНИМАЦИЯ ДЖЕКПОТА
+    if (winAmount >= 100) {
+        resultAmount.classList.add('jackpot-animation');
+        setTimeout(() => resultAmount.classList.remove('jackpot-animation'), 1500);
+        tg.HapticFeedback.impactOccurred('heavy');
+    } else if (winAmount >= 50) {
+        tg.HapticFeedback.impactOccurred('medium');
+    } else if (winAmount > 0) {
+        tg.HapticFeedback.impactOccurred('light');
+    } else {
+        tg.HapticFeedback.notificationOccurred('error');
+    }
+    
+    // НАЧИСЛЯЕМ ВЫИГРЫШ
     balance += winAmount;
     updateBalanceUI();
     
+    // Бесплатная крутка
     if (!isPaid) {
         lastFreeSpin = Date.now();
     }
     
-    saveGameData();
+    // Сохраняем
+    saveData();
     
-    if (winAmount >= 100) {
-        resultDisplay.innerHTML = `🔥 ДЖЕКПОТ! +${winAmount}G 🔥`;
-        tg.HapticFeedback.impactOccurred('heavy');
-    } else if (winAmount >= 50) {
-        resultDisplay.innerHTML = `⚡ +${winAmount}G! ⚡`;
-        tg.HapticFeedback.impactOccurred('medium');
-    } else if (winAmount > 0) {
-        resultDisplay.innerHTML = `🎉 +${winAmount}G!`;
-        tg.HapticFeedback.impactOccurred('light');
-    } else {
-        resultDisplay.innerHTML = `💔 0G... Повезёт в следующий раз`;
-        tg.HapticFeedback.notificationOccurred('error');
-    }
-    
-    if (!isSpinning) {
-        paidSpinBtn.disabled = balance < SPIN_COST;
-        checkFreeSpin();
-    }
+    // Разблокируем кнопки
+    isSpinning = false;
+    paidSpinBtn.disabled = balance < SPIN_COST;
+    checkFreeSpin();
 }
 
 // ============ ВСПОМОГАТЕЛЬНЫЕ ============
 function updateBalanceUI() {
     balanceEl.textContent = balance;
-    if (!isSpinning) {
-        paidSpinBtn.disabled = balance < SPIN_COST;
-    }
 }
 
 function checkFreeSpin() {
     if (!lastFreeSpin) {
-        if (!isSpinning) freeSpinBtn.disabled = false;
-        freeTimer.textContent = 'Готово!';
+        freeSpinBtn.disabled = false;
+        freeTimer.textContent = 'Готово';
         return true;
     }
     
@@ -319,8 +227,8 @@ function checkFreeSpin() {
     const hoursPassed = (now - lastFreeSpin) / (1000 * 60 * 60);
     
     if (hoursPassed >= COOLDOWN_HOURS) {
-        if (!isSpinning) freeSpinBtn.disabled = false;
-        freeTimer.textContent = 'Готово!';
+        freeSpinBtn.disabled = false;
+        freeTimer.textContent = 'Готово';
         return true;
     } else {
         freeSpinBtn.disabled = true;
@@ -332,6 +240,24 @@ function checkFreeSpin() {
     }
 }
 
+function updateChancesDisplay(mode) {
+    const table = mode === 'free' ? FREE_CHANCES : PAID_CHANCES;
+    let html = '';
+    
+    for (let i = 0; i < table.values.length; i++) {
+        let className = 'chance-item';
+        if (table.values[i] === 250) className += ' jackpot';
+        if (table.values[i] === 100) className += ' highlight';
+        
+        html += `<div class="${className}">
+            <span>${table.values[i]} G</span>
+            <span>${table.chances[i]}%</span>
+        </div>`;
+    }
+    
+    chancesDisplay.innerHTML = html;
+}
+
 // ============ ОБРАБОТЧИКИ ============
 freeSpinBtn.addEventListener('click', () => handleSpin(false));
 paidSpinBtn.addEventListener('click', () => handleSpin(true));
@@ -341,9 +267,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', function() {
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         this.classList.add('active');
-        
-        document.querySelectorAll('.chances-panel').forEach(p => p.classList.remove('active'));
-        document.getElementById(this.dataset.tab === 'free' ? 'freeChances' : 'paidChances').classList.add('active');
+        updateChancesDisplay(this.dataset.mode);
     });
 });
 
@@ -353,11 +277,4 @@ setInterval(() => {
 }, 60000);
 
 // Старт
-drawWheel(currentRotation);
 paidSpinBtn.disabled = balance < SPIN_COST;
-
-// Очистка
-window.addEventListener('beforeunload', () => {
-    if (animationFrame) cancelAnimationFrame(animationFrame);
-    saveGameData();
-});

@@ -24,57 +24,62 @@
             </div>
         </div>
 
-        <!-- Canvas рулетки -->
-        <div class="wheel-wrapper">
-            <canvas id="wheelCanvas" width="400" height="400"></canvas>
-            <div class="pointer">▼</div>
+        <!-- Колесо фортуны -->
+        <div class="wheel-container">
+            <div class="wheel" id="wheel">
+                <!-- 8 секторов с ЧЁТКИМИ подписями -->
+                <div class="sector" style="--rotation: 0deg;">
+                    <span class="sector-value">250</span>
+                </div>
+                <div class="sector" style="--rotation: 45deg;">
+                    <span class="sector-value">100</span>
+                </div>
+                <div class="sector" style="--rotation: 90deg;">
+                    <span class="sector-value">50</span>
+                </div>
+                <div class="sector" style="--rotation: 135deg;">
+                    <span class="sector-value">25</span>
+                </div>
+                <div class="sector" style="--rotation: 180deg;">
+                    <span class="sector-value">15</span>
+                </div>
+                <div class="sector" style="--rotation: 225deg;">
+                    <span class="sector-value">10</span>
+                </div>
+                <div class="sector" style="--rotation: 270deg;">
+                    <span class="sector-value">5</span>
+                </div>
+                <div class="sector" style="--rotation: 315deg;">
+                    <span class="sector-value">0</span>
+                </div>
+            </div>
+            <div class="wheel-pointer">▼</div>
         </div>
 
-        <!-- Результат -->
-        <div class="result-display" id="resultDisplay">
-            🎲 Нажми крутить!
+        <!-- РЕЗУЛЬТАТ - КРУПНЫМ ПЛАНОМ -->
+        <div class="result-card" id="resultCard">
+            <div class="result-title">ВЫ ВЫИГРАЛИ:</div>
+            <div class="result-amount" id="resultAmount">—</div>
         </div>
 
         <!-- Кнопки -->
         <div class="controls">
             <button id="freeSpinBtn" class="btn btn-free">
-                🎁 Бесплатно
+                🎁 БЕСПЛАТНО
                 <span id="freeTimer" class="timer"></span>
             </button>
             <button id="paidSpinBtn" class="btn btn-paid">
-                ⚡ Крутить (10G)
+                ⚡ КРУТИТЬ (10G)
             </button>
         </div>
 
-        <!-- Табы с шансами -->
-        <div class="info-section">
-            <div class="info-tabs">
-                <button class="tab-btn active" data-tab="free">🎁 Бесплатно</button>
-                <button class="tab-btn" data-tab="paid">⚡ За 10G</button>
+        <!-- Шансы -->
+        <div class="chances-section">
+            <div class="chances-tabs">
+                <button class="tab-btn active" data-mode="free">🎁 Бесплатно</button>
+                <button class="tab-btn" data-mode="paid">⚡ За 10G</button>
             </div>
-            
-            <div id="freeChances" class="chances-panel active">
-                <div class="chance-item"><span>0 G</span> <span>70.89%</span></div>   <!-- ВЕРХ -->
-                <div class="chance-item"><span>15 G</span> <span>4%</span></div>
-                <div class="chance-item"><span>25 G</span> <span>1.8%</span></div>
-                <div class="chance-item"><span>50 G</span> <span>0.7%</span></div>
-                <div class="chance-item highlight"><span>100 G</span> <span>0.1%</span></div>
-                <div class="chance-item"><span>5 G</span> <span>15%</span></div>
-                <div class="chance-item"><span>10 G</span> <span>7.5%</span></div>
-                <div class="chance-item jackpot"><span>250 G</span> <span>0.01%</span></div> <!-- НИЗ -->
-            </div>
-
-            <!-- Платные шансы -->
-            <div id="paidChances" class="chances-panel">
-                <div class="chance-item"><span>0 G</span> <span>50%</span></div>       <!-- ВЕРХ -->
-                <div class="chance-item"><span>15 G</span> <span>10%</span></div>
-                <div class="chance-item"><span>25 G</span> <span>5%</span></div>
-                <div class="chance-item"><span>50 G</span> <span>2%</span></div>
-                <div class="chance-item highlight"><span>100 G</span> <span>0.5%</span></div>
-                <div class="chance-item"><span>5 G</span> <span>17.4%</span></div>
-                <div class="chance-item"><span>10 G</span> <span>15%</span></div>
-                <div class="chance-item jackpot"><span>250 G</span> <span>0.1%</span></div>   <!-- НИЗ -->
-            </div>
+            <div id="chancesDisplay" class="chances-display"></div>
         </div>
     </div>
     <script src="script.js"></script>
