@@ -1,50 +1,85 @@
-let balance = 100;
-const SPIN_COST = 10;
-
 // Инициализация Telegram WebApp
 const tg = window.Telegram.WebApp;
 tg.ready();
 tg.expand();
 
-// Элементы DOM
-const balanceEl = document.getElementById('balance');
-const resultDisplay = document.getElementById('resultDisplay');
-const spinBtn = document.getElementById('spinButton');
-const lastWinText = document.getElementById('lastWinText');
+// Состояние приложения
+let balance = 100;
+let lastFreeSpin = null;
+const SPIN_COST = 10;
+const COOLDOWN_HOURS = 24;
 
-// Функция кручения рулетки
-function spinWheel() {
+// Данные пользователя
+const user = tg.initDataUnsafe?.user || {
+    first_name: 'Игрок',
+    username: 'player',
+    id: Math.floor(Math.random() * 1000000)
+};
+
+// Элементы DOM
+const wheel = document.getElementById('wheel');
+const balanceEl = document.getElementById('balance');
+const userNameEl = document.getElementById('userName');
+const userAvatar = document.getElementById('userAvatar');
+const resultDisplay = document.getElementById('resultDisplay');
+const freeSpinBtn = document.getElementById('freeSpinBtn');
+const paidSpinBtn = document.getElementById('paidSpinBtn');
+const freeTimer = document.getElementById('freeTimer');
+
+// Установка данных пользователя
+userNameEl.textContent = user.first_name + (user.last_name ? ' ' + user.last_name : '');
+userAvatar.src = user.photo_url || `https://ui-avatars.com/api/?name=${user.first_name}&background=ffd700&color=000&size=128`;
+
+// Шансы для разных режимов
+const CHANCES = {
+    free: [
+        { value: 0, chance: 70.89 },
+        { value: 5, chance: 15 },
+        { value: 10, chance: 7.5 },
+        { value: 15, chance: 4 },
+        { value: 25, chance: 1.8 },
+        { value: 50, chance: 0.7 },
+        { value: 100, chance: 0.1 },
+        { value: 250, chance: 0.01 }
+    ],
+    paid: [
+        { value: 0, chance: 50 },
+        { value: 5, chance: 17.4 },
+        { value: 10, chance: 15 },
+        { value: 15, chance: 10 },
+        { value: 25, chance: 5 },
+        { value: 50, chance: 2 },
+        { value: 100, chance: 0.5 },
+        { value: 250, chance: 0.1 }
+    ]
+};
+
+// Функция выбора выигрыша на основе шансов
+function getWinValue(mode) {
+    const chances = CHANCES[mode];
     const rand = Math.random() * 100;
+    let cumulative = 0;
     
-    // Шансы:
-    // 0-25G - 70%
-    // 50G - 20%
-    // 100G - 10%
-    
-    if (rand < 10) {        // 10% - ДЖЕКПОТ 100G
-        return 100;
-    } else if (rand < 30) { // 20% - 50G
-        return 50;
-    } else if (rand < 60) { // 30% - 25G
-        return 25;
-    } else if (rand < 90) { // 30% - 10G
-        return 10;
-    } else if (rand < 97) { // 7% - 5G
-        return 5;
-    } else {                // 3% - 0G
-        return 0;
+    for (const item of chances) {
+        cumulative += item.chance;
+        if (rand < cumulative) {
+            return item.value;
+        }
     }
+    return 0;
 }
 
-// Анимация кручения
-async function spinAnimation() {
-    const frames = ['🎲', '⚡', '💎', '🔫', '🎯', '💰', '🏆', '🔥'];
-    for (let i = 0; i < 15; i++) {
-        resultDisplay.textContent = frames[Math.floor(Math.random() * frames.length)];
-        resultDisplay.classList.add('spinning');
-        await new Promise(resolve => setTimeout(resolve, 50));
-        resultDisplay.classList.remove('spinning');
-    }
+// Анимация вращения барабана
+async function spinWheel(targetValue) {
+    // Определяем сектор для выигрыша
+    const sectorIndex = CHANCES.free.findIndex(item => item.value === targetValue);
+    const targetRotation = 360 * 5 + (45 * sectorIndex) + 22.5; // 5 полных оборотов + смещение
+    
+    // Вращаем
+    wheel.style.transform = `rotate(${targetRotation}deg)`;
+    
+    // Ждём окончания анимации
+    await new Promise(resolve => setTimeout(resolve, 3000));
 }
 
 // Обновление баланса
@@ -52,87 +87,167 @@ function updateBalanceUI() {
     balanceEl.textContent = balance;
 }
 
-// Проверка на бомжей
-function checkBalance() {
-    if (balance < SPIN_COST) {
-        spinBtn.disabled = true;
-        lastWinText.textContent = '❌ Недостаточно G! ❌';
-        lastWinText.style.color = '#ff4757';
+// Проверка бесплатной крутки
+function checkFreeSpin() {
+    if (!lastFreeSpin) {
+        freeSpinBtn.disabled = false;
+        freeTimer.textContent = 'Готово!';
+        return true;
+    }
+    
+    const now = Date.now();
+    const hoursPassed = (now - lastFreeSpin) / (1000 * 60 * 60);
+    
+    if (hoursPassed >= COOLDOWN_HOURS) {
+        freeSpinBtn.disabled = false;
+        freeTimer.textContent = 'Готово!';
+        return true;
     } else {
-        spinBtn.disabled = false;
+        freeSpinBtn.disabled = true;
+        const hoursLeft = COOLDOWN_HOURS - hoursPassed;
+        const hours = Math.floor(hoursLeft);
+        const minutes = Math.floor((hoursLeft - hours) * 60);
+        freeTimer.textContent = `${hours}ч ${minutes}м`;
+        return false;
     }
 }
 
-// Основная функция крутки
-async function spin() {
-    if (balance < SPIN_COST) {
-        tg.showAlert('❌ Недостаточно G! ❌');
+// Обновление таймера каждую минуту
+setInterval(checkFreeSpin, 60000);
+
+// Бесплатная крутка
+async function handleFreeSpin() {
+    if (!checkFreeSpin()) {
+        tg.showAlert('❌ Бесплатная крутка ещё недоступна!');
         return;
     }
-
-    // Блокируем кнопку
-    spinBtn.disabled = true;
     
-    // Снимаем плату
-    balance -= SPIN_COST;
-    updateBalanceUI();
-    
-    // Анимация
-    await spinAnimation();
+    // Блокируем кнопки
+    freeSpinBtn.disabled = true;
+    paidSpinBtn.disabled = true;
     
     // Получаем выигрыш
-    const winAmount = spinWheel();
+    const winAmount = getWinValue('free');
+    
+    // Анимируем
+    await spinWheel(winAmount);
+    
+    // Начисляем выигрыш
     balance += winAmount;
     updateBalanceUI();
     
-    // Отображаем результат
-    if (winAmount === 100) {
-        resultDisplay.textContent = '🔥 100 🔥';
-        lastWinText.innerHTML = '🎉 ДЖЕКПОТ! +100G 🎉';
-        lastWinText.style.color = '#ffd700';
+    // Обновляем время последней бесплатной крутки
+    lastFreeSpin = Date.now();
+    localStorage.setItem('lastFreeSpin', lastFreeSpin);
+    
+    // Показываем результат
+    if (winAmount >= 100) {
+        resultDisplay.innerHTML = `🔥 ДЖЕКПОТ! +${winAmount}G 🔥`;
         tg.HapticFeedback.impactOccurred('heavy');
-    } else if (winAmount === 50) {
-        resultDisplay.textContent = '⚡ 50 ⚡';
-        lastWinText.innerHTML = '🎯 +50G!';
-        lastWinText.style.color = '#e67e22';
+    } else if (winAmount >= 50) {
+        resultDisplay.innerHTML = `⚡ +${winAmount}G! ⚡`;
         tg.HapticFeedback.impactOccurred('medium');
-    } else if (winAmount === 25) {
-        resultDisplay.textContent = '💰 25 💰';
-        lastWinText.innerHTML = '👍 +25G';
-        lastWinText.style.color = '#a4b0be';
+    } else if (winAmount > 0) {
+        resultDisplay.innerHTML = `🎉 +${winAmount}G!`;
         tg.HapticFeedback.impactOccurred('light');
-    } else if (winAmount === 10) {
-        resultDisplay.textContent = '🎲 10 🎲';
-        lastWinText.innerHTML = '🍃 +10G';
-        lastWinText.style.color = '#a4b0be';
-    } else if (winAmount === 5) {
-        resultDisplay.textContent = '🍃 5 🍃';
-        lastWinText.innerHTML = '😕 +5G';
-        lastWinText.style.color = '#747d8c';
     } else {
-        resultDisplay.textContent = '💔 0 💔';
-        lastWinText.innerHTML = '💔 В этот раз не повезло...';
-        lastWinText.style.color = '#747d8c';
+        resultDisplay.innerHTML = `💔 0G... Повезёт в следующий раз`;
+        tg.HapticFeedback.notificationOccurred('error');
     }
     
-    // Разблокируем кнопку
-    spinBtn.disabled = false;
-    checkBalance();
-    
-    // Сохраняем баланс
-    tg.MainButton.setText(`Баланс: ${balance}G`);
+    // Разблокируем кнопки
+    paidSpinBtn.disabled = false;
+    checkFreeSpin();
 }
 
-// Обработчик кнопки
-spinBtn.addEventListener('click', spin);
+// Платная крутка
+async function handlePaidSpin() {
+    if (balance < SPIN_COST) {
+        tg.showAlert('❌ Недостаточно G!');
+        return;
+    }
+    
+    // Блокируем кнопки
+    freeSpinBtn.disabled = true;
+    paidSpinBtn.disabled = true;
+    
+    // Списываем плату
+    balance -= SPIN_COST;
+    updateBalanceUI();
+    
+    // Получаем выигрыш
+    const winAmount = getWinValue('paid');
+    
+    // Анимируем
+    await spinWheel(winAmount);
+    
+    // Начисляем выигрыш
+    balance += winAmount;
+    updateBalanceUI();
+    
+    // Показываем результат
+    if (winAmount >= 100) {
+        resultDisplay.innerHTML = `🔥 ДЖЕКПОТ! +${winAmount}G 🔥`;
+        tg.HapticFeedback.impactOccurred('heavy');
+    } else if (winAmount >= 50) {
+        resultDisplay.innerHTML = `⚡ +${winAmount}G! ⚡`;
+        tg.HapticFeedback.impactOccurred('medium');
+    } else if (winAmount > 0) {
+        resultDisplay.innerHTML = `🎉 +${winAmount}G!`;
+        tg.HapticFeedback.impactOccurred('light');
+    } else {
+        resultDisplay.innerHTML = `💔 0G... Повезёт в следующий раз`;
+        tg.HapticFeedback.notificationOccurred('error');
+    }
+    
+    // Разблокируем кнопки
+    freeSpinBtn.disabled = false;
+    paidSpinBtn.disabled = false;
+    checkFreeSpin();
+}
 
-// Стартовая проверка
-checkBalance();
-updateBalanceUI();
+// Переключение табов
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        
+        document.querySelectorAll('.chances-panel').forEach(p => p.classList.remove('active'));
+        if (this.dataset.tab === 'free') {
+            document.getElementById('freeChances').classList.add('active');
+        } else {
+            document.getElementById('paidChances').classList.add('active');
+        }
+    });
+});
 
-// Отправляем данные в Telegram при закрытии
+// Загрузка сохранённых данных
+const savedBalance = localStorage.getItem(`balance_${user.id}`);
+const savedLastFreeSpin = localStorage.getItem(`lastFreeSpin_${user.id}`);
+
+if (savedBalance) {
+    balance = parseInt(savedBalance);
+    updateBalanceUI();
+}
+
+if (savedLastFreeSpin) {
+    lastFreeSpin = parseInt(savedLastFreeSpin);
+}
+
+// Обработчики кнопок
+freeSpinBtn.addEventListener('click', handleFreeSpin);
+paidSpinBtn.addEventListener('click', handlePaidSpin);
+
+// Сохранение при закрытии
 window.addEventListener('beforeunload', () => {
+    localStorage.setItem(`balance_${user.id}`, balance);
+    localStorage.setItem(`lastFreeSpin_${user.id}`, lastFreeSpin);
+    
     tg.sendData(JSON.stringify({
-        balance: balance
+        balance: balance,
+        userId: user.id
     }));
 });
+
+// Проверяем доступность бесплатной крутки при загрузке
+checkFreeSpin();

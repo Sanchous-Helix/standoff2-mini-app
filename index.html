@@ -8,38 +8,79 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🎰 STANDOFF 2</h1>
-            <div class="balance">
-                💰 <span id="balance">100</span> G
+    <div class="app">
+        <!-- Профиль -->
+        <div class="profile-card">
+            <div class="profile-info">
+                <img id="userAvatar" src="https://ui-avatars.com/api/?name=User&background=ffd700&color=000" alt="avatar" class="avatar">
+                <div class="user-details">
+                    <span id="userName">Загрузка...</span>
+                    <div class="balance-wrapper">
+                        <span class="balance-label">💰 Баланс</span>
+                        <span id="balance" class="balance-amount">100</span>
+                        <span class="currency">G</span>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div class="slot-machine">
-            <div class="slot-window">
-                <div id="resultDisplay">🎲</div>
+        <!-- Барабан рулетки -->
+        <div class="wheel-container">
+            <div class="wheel" id="wheel">
+                <div class="sector" style="--rotation: 0deg;">0</div>
+                <div class="sector" style="--rotation: 45deg;">5</div>
+                <div class="sector" style="--rotation: 90deg;">10</div>
+                <div class="sector" style="--rotation: 135deg;">15</div>
+                <div class="sector" style="--rotation: 180deg;">25</div>
+                <div class="sector" style="--rotation: 225deg;">50</div>
+                <div class="sector" style="--rotation: 270deg;">100</div>
+                <div class="sector" style="--rotation: 315deg;">250</div>
             </div>
-            <div class="slot-info">
-                <span class="price">⚡ 10G за прокрут</span>
-                <span class="jackpot">🔥 ДЖЕКПОТ: 100G</span>
-            </div>
+            <div class="wheel-pointer">▼</div>
         </div>
 
-        <div class="last-win">
-            <span id="lastWinText"></span>
+        <div class="result-display" id="resultDisplay">
+            🎲 Нажми крутить!
         </div>
 
-        <button id="spinButton" class="spin-btn">
-            🎲 КРУТИТЬ
-        </button>
+        <!-- Кнопки управления -->
+        <div class="controls">
+            <button id="freeSpinBtn" class="btn btn-free">
+                🎁 Бесплатно
+                <span id="freeTimer" class="timer"></span>
+            </button>
+            <button id="paidSpinBtn" class="btn btn-paid">
+                ⚡ Крутить (10G)
+            </button>
+        </div>
 
-        <div class="stats">
-            <div>📊 Шансы:</div>
-            <div class="chances">
-                <span class="chance low">0-25G: 70%</span>
-                <span class="chance medium">50G: 20%</span>
-                <span class="chance high">100G: 10%</span>
+        <!-- Информация о шансах -->
+        <div class="info-section">
+            <div class="info-tabs">
+                <button class="tab-btn active" data-tab="free">🎁 Бесплатно</button>
+                <button class="tab-btn" data-tab="paid">⚡ За 10G</button>
+            </div>
+            
+            <div id="freeChances" class="chances-panel active">
+                <div class="chance-item"><span>0 G</span> <span>70.89%</span></div>
+                <div class="chance-item"><span>5 G</span> <span>15%</span></div>
+                <div class="chance-item"><span>10 G</span> <span>7.5%</span></div>
+                <div class="chance-item"><span>15 G</span> <span>4%</span></div>
+                <div class="chance-item"><span>25 G</span> <span>1.8%</span></div>
+                <div class="chance-item"><span>50 G</span> <span>0.7%</span></div>
+                <div class="chance-item highlight"><span>100 G</span> <span>0.1%</span></div>
+                <div class="chance-item jackpot"><span>250 G</span> <span>0.01%</span></div>
+            </div>
+
+            <div id="paidChances" class="chances-panel">
+                <div class="chance-item"><span>0 G</span> <span>50%</span></div>
+                <div class="chance-item"><span>5 G</span> <span>17.4%</span></div>
+                <div class="chance-item"><span>10 G</span> <span>15%</span></div>
+                <div class="chance-item"><span>15 G</span> <span>10%</span></div>
+                <div class="chance-item"><span>25 G</span> <span>5%</span></div>
+                <div class="chance-item"><span>50 G</span> <span>2%</span></div>
+                <div class="chance-item highlight"><span>100 G</span> <span>0.5%</span></div>
+                <div class="chance-item jackpot"><span>250 G</span> <span>0.1%</span></div>
             </div>
         </div>
     </div>
