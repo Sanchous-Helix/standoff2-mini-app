@@ -1,187 +1,283 @@
-/* делаем везде так, чтобы свойства width и height задавали не размеры контента, а размеры блока */
+/* ===== БАЗОВЫЕ НАСТРОЙКИ (ПОЛНОСТЬЮ ИЗ СТАТЬИ) ===== */
 * {
-  box-sizing: border-box;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
 }
 
-/* общие настройки страницы */
 body {
-  /* подключаем сетку */
-  display: grid;
-  /* ставим всё по центру */
-  place-items: center;
-  /* если что-то не помещается на своё место — скрываем то, что не поместилось */
-  overflow: hidden;
+    display: grid;
+    place-items: center;
+    overflow-x: hidden;
+    background: #0f1217;
+    font-family: system-ui, sans-serif;
+    padding: 20px;
+    min-height: 100vh;
 }
 
-/* общий блок для всех элементов */
+/* ===== ОСНОВНОЙ БЛОК КОЛЕСА (ИЗ СТАТЬИ) ===== */
 .deal-wheel {
-  /* задаём переменные блока */
-  /* размеры колеса */
-  --size: clamp(250px, 80vmin, 700px);
-  /* настройки яркости и заливки фона секторов */
-  --lg-hs: 0 3%;
-  --lg-stop: 50%;
-  --lg: linear-gradient(
-      hsl(var(--lg-hs) 0%) 0 var(--lg-stop),
-      hsl(var(--lg-hs) 20%) var(--lg-stop) 100%
+    --size: clamp(280px, 80vmin, 500px);
+    --lg-hs: 0 0%;
+    --lg-stop: 50%;
+    --lg: linear-gradient(
+        hsl(var(--lg-hs) 0%) 0 var(--lg-stop),
+        hsl(var(--lg-hs) 20%) var(--lg-stop) 100%
     );
-  /* добавляем позиционирование относительно других элементов */
-  position: relative;
-  /* подключаем сетку */
-  display: grid;
-  grid-gap: calc(var(--size) / 20);
-  /* выравниваем содержимое блока по центру */
-  align-items: center;
-  /* задаём имена областей внутри сетки */
-  grid-template-areas:
-    "spinner"
-    "trigger";
-  /* устанавливаем размер шрифта */
-  font-size: calc(var(--size) / 21);
+    position: relative;
+    display: grid;
+    grid-gap: calc(var(--size) / 20);
+    align-items: center;
+    grid-template-areas: 
+        "spinner"
+        "trigger";
+    font-size: calc(var(--size) / 21);
+    margin: 0 auto;
 }
 
-/* всё, что относится ко внутренним элементам главного блока, будет находиться в области сетки с названием spinner */
 .deal-wheel > * {
-  grid-area: spinner;
+    grid-area: spinner;
 }
 
-/* сам блок и кнопка будут находиться в области сетки с названием trigger и будут выровнены по центру */
 .deal-wheel .btn-spin {
-  grid-area: trigger;
-  justify-self: center;
+    grid-area: trigger;
+    justify-self: center;
 }
 
-/* сектор колеса */
+/* ===== КОЛЕСО (СПИННЕР) ===== */
 .spinner {
-  /* добавляем относительное позиционирование */
-  position: relative;
-  /* подключаем сетку */
-  display: grid;
-  /* выравниваем всё по центру */
-  align-items: center;
-  /* добавляем элемент в сетку */
-  grid-template-areas: "spinner";
-  /* устанавливаем размеры */
-  width: var(--size);
-  height: var(--size);
-  /* поворачиваем элемент  */
-  transform: rotate(calc(var(--rotate, 25) * 1deg));
-  /* рисуем круглую обводку, а всё, что не поместится, — будет скрыто за кругом */
-  border-radius: 50%;
+    position: relative;
+    display: grid;
+    align-items: center;
+    grid-template-areas: "spinner";
+    width: var(--size);
+    height: var(--size);
+    transform: rotate(calc(var(--rotate, 25) * 1deg));
+    border-radius: 50%;
+    box-shadow: 0 0 20px rgba(0,0,0,0.3);
+    transition: transform 8s cubic-bezier(0.1, -0.01, 0, 1);
 }
 
-/* всё, что внутри этого блока, будет находиться в области сетки с названием spinner */
 .spinner * {
-  grid-area: spinner;
+    grid-area: spinner;
 }
 
-/* текст на секторах */
+/* ===== ТЕКСТ НА СЕКТОРАХ ===== */
 .prize {
-  /* включаем «гибкую» вёрстку */
-  display: flex;
-  align-items: center;
-  /* задаём отступы от краёв блока */
-  padding: 0 calc(var(--size) / 6) 0 calc(var(--size) / 20);
-  /* устанавливаем размеры */
-  width: 50%;
-  height: 50%;
-  /* устанавливаем координаты, относительно которых будем вращать текст */
-  transform-origin: center right;
-  /* поворачиваем текст */
-  transform: rotate(var(--rotate));
-  /* запрещаем пользователю выделять мышкой текст на секторах */
-  user-select: none;
+    display: flex;
+    align-items: center;
+    padding: 0 calc(var(--size) / 6) 0 calc(var(--size) / 20);
+    width: 50%;
+    height: 50%;
+    transform-origin: center right;
+    transform: rotate(var(--rotate));
+    user-select: none;
+    font-weight: 800;
+    color: white;
+    text-shadow: 2px 2px 0 rgba(0,0,0,0.5);
+    font-size: 1.3em;
 }
 
-/* язычок */
+/* ===== ЯЗЫЧОК (СТРЕЛКА) ===== */
 .ticker {
-  /* добавляем относительное позиционирование */
-  position: relative;
-  /* устанавливаем размеры */
-  left: calc(var(--size) / -15);
-  width: calc(var(--size) / 10);
-  height: calc(var(--size) / 20);
-  /* фон язычка */
-  background: var(--lg);
-  /* делаем так, чтобы язычок был выше колеса */
-  z-index: 1;
-  /* форма язычка */
-  clip-path: polygon(20% 0, 100% 50%, 20% 100%, 0% 50%);
-  /* устанавливаем точку, относительно которой будет вращаться язычок при движении колеса */
-  transform-origin: center left;
+    position: relative;
+    left: calc(var(--size) / -15);
+    width: calc(var(--size) / 10);
+    height: calc(var(--size) / 20);
+    background: var(--lg);
+    z-index: 1;
+    clip-path: polygon(20% 0, 100% 50%, 20% 100%, 0% 50%);
+    transform-origin: center left;
 }
 
-/* кнопка запуска колеса */
-.btn-spin {
-  color: white;
-  background: black;
-  border: none;
-  /* берём размер шрифта такой же, как в колесе */
-  font-size: inherit;
-  /* добавляем отступы от текста внутри кнопки */
-  padding: 0.9rem 2rem 1rem;
-  /* скругляем углы */
-  border-radius: 0.5rem;
-  /* меняем внешний вид курсора над кнопкой на руку*/
-  cursor: pointer;
-}
-
-/* если кнопка нажата и неактивна */
-.btn-spin:disabled {
-  /* меняем внешний вид курсора */
-  cursor: progress;
-  /* делаем кнопку полупрозрачной */
-  opacity: 0.25;
-}
-
-/* анимация вращения */
+/* ===== АНИМАЦИЯ ВРАЩЕНИЯ ===== */
 .is-spinning .spinner {
-  transition: transform 8s cubic-bezier(0.1, -0.01, 0, 1);
+    transition: transform 8s cubic-bezier(0.1, -0.01, 0, 1);
 }
 
-/* анимация движения язычка */
 .is-spinning .ticker {
-          animation: tick 700ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    animation: tick 700ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-
-/* эффект, когда колесо задевает язычок при вращении */
 @keyframes tick {
-  40% {
-    /* чуть поворачиваем язычок наверх в середине анимации */
-    transform: rotate(-12deg);
-  }
+    40% { transform: rotate(-12deg); }
 }
 
-/* анимируем выпавший сектор */
+/* ===== ВЫПАВШИЙ СЕКТОР ===== */
 .prize.selected .text {
-  /* делаем текст белым */
-  color: white;
-  /* настраиваем длительность анимации */
-  animation: selected 800ms ease;
+    color: white;
+    animation: selected 800ms ease;
 }
 
-/* настраиваем анимацию текста на выпавшем секторе по кадрам */
 @keyframes selected {
-  /* что происходит на 25% от начала анимации */
-  25% {
-    /* увеличиваем текст в 1,25 раза */
-    transform: scale(1.25);
-    /* добавляем тексту тень */
-    text-shadow: 1vmin 1vmin 0 hsla(0 0% 0% / 0.1);
-  }
-  40% {
-    transform: scale(0.92);
-    text-shadow: 0 0 0 hsla(0 0% 0% / 0.2);
-  }
-  60% {
-    transform: scale(1.02);
-    text-shadow: 0.5vmin 0.5vmin 0 hsla(0 0% 0% / 0.1);
-  }
-  75% {
-    transform: scale(0.98);
-  }
-  85% {
-    transform: scale(1);
-  }
+    25% { transform: scale(1.25); text-shadow: 1vmin 1vmin 0 hsla(0 0% 0% / 0.1); }
+    40% { transform: scale(0.92); text-shadow: 0 0 0 hsla(0 0% 0% / 0.2); }
+    60% { transform: scale(1.02); text-shadow: 0.5vmin 0.5vmin 0 hsla(0 0% 0% / 0.1); }
+    75% { transform: scale(0.98); }
+    85% { transform: scale(1); }
+}
+
+/* ===== КНОПКА (ИЗ СТАТЬИ) ===== */
+.btn-spin {
+    color: white;
+    background: black;
+    border: none;
+    font-size: inherit;
+    padding: 0.9rem 2rem 1rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    font-weight: 800;
+    box-shadow: 0 6px 0 rgba(0,0,0,0.3);
+    transition: 0.06s;
+}
+
+.btn-spin:disabled {
+    cursor: progress;
+    opacity: 0.25;
+}
+
+.btn-spin:active {
+    transform: translateY(4px);
+    box-shadow: 0 2px 0 rgba(0,0,0,0.3);
+}
+
+/* ===== ДОПОЛНИТЕЛЬНЫЕ СТИЛИ ПОД ТВОИ ЗАДАЧИ ===== */
+/* Профиль */
+.profile {
+    grid-area: trigger;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: #1e232b;
+    padding: 12px 20px;
+    border-radius: 50px;
+    border: 1px solid #ffd70080;
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+.avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 2px solid #ffd700;
+    background: #2f3540;
+    object-fit: cover;
+}
+
+.username {
+    color: white;
+    font-weight: bold;
+    margin-bottom: 4px;
+}
+
+.balance {
+    color: #ffd700;
+    font-weight: bold;
+    font-size: 1.2rem;
+}
+
+/* Панель кнопок (две кнопки рядом) */
+.btn-panel {
+    grid-area: trigger;
+    display: flex;
+    gap: 16px;
+    width: 100%;
+    margin-top: 10px;
+}
+
+.btn-free {
+    background: #27ae60;
+}
+
+.btn-paid {
+    background: #e67e22;
+}
+
+.timer {
+    font-size: 0.8rem;
+    background: rgba(0,0,0,0.5);
+    padding: 4px 12px;
+    border-radius: 50px;
+}
+
+/* Результат */
+.result-message {
+    background: #1e232b;
+    padding: 16px;
+    border-radius: 20px;
+    margin-top: 24px;
+    text-align: center;
+    font-size: 28px;
+    font-weight: 900;
+    color: #ffd700;
+    border: 1px solid #ffd700;
+    width: 100%;
+    max-width: var(--size);
+}
+
+/* Шансы */
+.chances-block {
+    background: #1e232b;
+    border-radius: 20px;
+    padding: 16px;
+    margin-top: 24px;
+    width: 100%;
+    max-width: var(--size);
+}
+
+.chances-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.tab {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    background: #2f3540;
+    color: white;
+    border-radius: 12px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.tab.active {
+    background: #ffd700;
+    color: black;
+}
+
+.chances-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+
+.chance-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: #2f3540;
+    border-radius: 10px;
+    color: white;
+}
+
+.chance-item.jackpot {
+    background: #c0392b;
+}
+
+.chance-item.highlight {
+    background: #f39c12;
+    color: black;
+}
+
+/* Анимация джекпота */
+@keyframes jackpotFlash {
+    0%, 100% { transform: scale(1); background: #ffd700; color: black; }
+    50% { transform: scale(1.1); background: #ffaa00; color: black; }
+}
+
+.jackpot-animation {
+    animation: jackpotFlash 0.5s ease 3;
 }
