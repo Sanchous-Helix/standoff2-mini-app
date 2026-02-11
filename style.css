@@ -132,7 +132,7 @@ body::before {
     color: #aaa;
 }
 
-/* Wheel Section */
+/* Wheel Section - 8 СЕКТОРОВ */
 .wheel-section {
     background: linear-gradient(135deg, #1a1d24, #13161b);
     border-radius: 20px;
@@ -172,6 +172,7 @@ body::before {
     will-change: transform;
 }
 
+/* Стили для 8 равных секторов */
 .wheel-sector {
     position: absolute;
     width: 50%;
@@ -192,7 +193,7 @@ body::before {
 
 .wheel-sector span {
     transform: rotate(45deg);
-    font-size: 14px;
+    font-size: 13px;
     font-weight: bold;
     text-align: center;
     padding-left: 35px;
@@ -453,23 +454,33 @@ body::before {
     margin-top: 15px;
 }
 
-/* Sector Colors for 8 sectors */
-.sector-0 { background: linear-gradient(135deg, #5d6d7e, #3d4d5e); }
-.sector-5 { background: linear-gradient(135deg, #2ecc71, #27ae60); }
-.sector-10 { background: linear-gradient(135deg, #3498db, #2980b9); }
-.sector-15 { background: linear-gradient(135deg, #9b59b6, #8e44ad); }
-.sector-25 { background: linear-gradient(135deg, #f39c12, #d68910); }
-.sector-50 { background: linear-gradient(135deg, #e74c3c, #c0392b); }
-.sector-100 { background: linear-gradient(135deg, #e91e63, #c2185b); }
-.sector-250 { background: linear-gradient(135deg, #00bcd4, #0097a7); }
-
-/* Для сектора проигрыша сделаем текст покрупнее */
-.sector-0 span {
-    font-size: 12px;
-    font-weight: bold;
+/* 8 ЦВЕТНЫХ СЕКТОРОВ - ПО ОДНОМУ ДЛЯ КАЖДОГО ПРИЗА */
+.sector-0 { 
+    background: linear-gradient(135deg, #5d6d7e, #3d4d5e); 
+}
+.sector-5 { 
+    background: linear-gradient(135deg, #2ecc71, #27ae60); 
+}
+.sector-10 { 
+    background: linear-gradient(135deg, #3498db, #2980b9); 
+}
+.sector-15 { 
+    background: linear-gradient(135deg, #9b59b6, #8e44ad); 
+}
+.sector-25 { 
+    background: linear-gradient(135deg, #f39c12, #d68910); 
+}
+.sector-50 { 
+    background: linear-gradient(135deg, #e74c3c, #c0392b); 
+}
+.sector-100 { 
+    background: linear-gradient(135deg, #e91e63, #c2185b); 
+}
+.sector-250 { 
+    background: linear-gradient(135deg, #00bcd4, #0097a7); 
 }
 
-/* Responsive */
+/* Улучшенная читаемость для мобильных */
 @media (max-width: 480px) {
     .container {
         padding: 5px;
@@ -485,13 +496,9 @@ body::before {
     }
     
     .wheel-sector span {
-        font-size: 12px;
-        padding-left: 30px;
-        padding-top: 15px;
-    }
-    
-    .sector-0 span {
         font-size: 11px;
+        padding-left: 28px;
+        padding-top: 12px;
     }
     
     .stats-grid {

@@ -12,7 +12,7 @@ let gameData = {
     freeSpinAvailable: true
 };
 
-// Призы, которые отображаются на колесе (8 равных секторов)
+// 8 ПРИЗОВ НА КОЛЕСЕ - РАВНЫЕ СЕКТОРА
 const WHEEL_PRIZES = [
     { value: 0, text: '0 G', color: '#5d6d7e', class: 'sector-0' },
     { value: 5, text: '5 G', color: '#2ecc71', class: 'sector-5' },
@@ -24,7 +24,7 @@ const WHEEL_PRIZES = [
     { value: 250, text: '250 G', color: '#00bcd4', class: 'sector-250' }
 ];
 
-// Шансы для бесплатной крутки (ТОЧНО как вы указали)
+// Шансы для бесплатной крутки (70.89 + 15 + 7.5 + 4 + 1.8 + 0.7 + 0.1 + 0.01 = 100)
 const FREE_SPIN_CHANCES = {
     0: 70.89,   // 0 G
     5: 15,      // 5 G
@@ -36,7 +36,7 @@ const FREE_SPIN_CHANCES = {
     250: 0.01   // 250 G
 };
 
-// Шансы для платной крутки за 10 G (ТОЧНО как вы указали)
+// Шансы для платной крутки за 10 G (50 + 17.4 + 15 + 10 + 5 + 2 + 0.5 + 0.1 = 100)
 const PAID_SPIN_CHANCES = {
     0: 50,      // 0 G
     5: 17.4,    // 5 G
@@ -48,13 +48,6 @@ const PAID_SPIN_CHANCES = {
     250: 0.1    // 250 G
 };
 
-// Проверка суммы вероятностей
-function validateChances(chances) {
-    const sum = Object.values(chances).reduce((a, b) => a + b, 0);
-    console.log(`Сумма вероятностей: ${sum}%`);
-    return Math.abs(sum - 100) < 0.01;
-}
-
 // Spin costs
 const FREE_SPIN_COST = 0;
 const PAID_SPIN_COST = 10;
@@ -65,10 +58,7 @@ const FREE_SPIN_COOLDOWN = 4 * 60 * 60 * 1000;
 // Initialize game
 function initGame() {
     console.log('🎡 Инициализация GoldBank Roulette...');
-    
-    // Проверяем вероятности
-    console.log('✅ Проверка шансов для бесплатной крутки:', validateChances(FREE_SPIN_CHANCES));
-    console.log('✅ Проверка шансов для платной крутки:', validateChances(PAID_SPIN_CHANCES));
+    console.log('✅ Колесо с 8 секторами:', WHEEL_PRIZES.map(p => p.text).join(', '));
     
     if (tg) {
         tg.expand();
@@ -140,8 +130,8 @@ function initWheel() {
     const wheel = document.getElementById('wheel');
     wheel.innerHTML = '';
     
-    const totalSectors = WHEEL_PRIZES.length;
-    const sectorAngle = 360 / totalSectors;
+    const totalSectors = WHEEL_PRIZES.length; // 8 секторов
+    const sectorAngle = 360 / totalSectors; // 45 градусов на сектор
     
     WHEEL_PRIZES.forEach((prize, index) => {
         const sector = document.createElement('div');
@@ -160,7 +150,7 @@ function initWheel() {
         wheel.appendChild(sector);
     });
     
-    console.log('✅ Колесо создано с 8 секторами:', WHEEL_PRIZES.map(p => p.text).join(', '));
+    console.log('✅ Колесо создано с 8 секторами');
 }
 
 // Setup event listeners
@@ -245,7 +235,6 @@ function updateFreeSpinTimer() {
 
 // Get random prize based on chances
 function getRandomPrize(chances) {
-    // Преобразуем объект в массив для удобства
     const prizes = Object.keys(chances).map(value => ({
         value: parseInt(value),
         chance: chances[value]
@@ -261,7 +250,7 @@ function getRandomPrize(chances) {
         random -= prize.chance;
     }
     
-    return 0; // По умолчанию проигрыш
+    return 0;
 }
 
 // Spin wheel
@@ -299,7 +288,7 @@ function spinWheel(isFree) {
     
     // Получаем случайный выигрыш
     const winAmount = getRandomPrize(chances);
-    console.log(`🎯 Случайный выигрыш: ${winAmount} G (${isFree ? 'бесплатный' : 'платный'} спин)`);
+    console.log(`🎯 Выпало: ${winAmount} G (${isFree ? 'бесплатный' : 'платный'})`);
     
     // Находим индекс этого приза на колесе
     const prizeIndex = WHEEL_PRIZES.findIndex(p => p.value === winAmount);
@@ -324,17 +313,16 @@ function spinWheel(isFree) {
 // Rotate wheel to specific prize index
 function rotateWheelToPrize(prizeIndex, callback) {
     const wheel = document.getElementById('wheel');
-    const totalSectors = WHEEL_PRIZES.length;
-    const sectorAngle = 360 / totalSectors;
+    const totalSectors = WHEEL_PRIZES.length; // 8 секторов
+    const sectorAngle = 360 / totalSectors; // 45 градусов
     
     // Количество полных оборотов
     const fullRotations = 5;
     
     // Рассчитываем угол остановки
-    // Указатель находится наверху (0 градусов)
+    // Указатель наверху (0 градусов)
     // Нужно чтобы сектор prizeIndex оказался под указателем
-    // Формула: полные обороты + позиционирование нужного сектора под указателем
-    const stopAngle = (fullRotations * 360) + (360 - (prizeIndex * sectorAngle)) + (sectorAngle / 2);
+    const stopAngle = (fullRotations * 360) + (360 - (prizeIndex * sectorAngle) - (sectorAngle / 2));
     
     // Reset wheel position
     wheel.style.transition = 'none';
@@ -366,57 +354,52 @@ function processSpinResult(winAmount, isFree) {
     
     // Показываем уведомление
     let message = '';
-    const prizeText = WHEEL_PRIZES.find(p => p.value === winAmount)?.text || '0 G';
     
     switch (winAmount) {
         case 250:
-            message = `🏆 СУПЕР ДЖЕКПОТ! Вы выиграли ${winAmount} G!`;
+            message = `🏆 СУПЕР ДЖЕКПОТ! +250 G!`;
             playSound('winSound');
             showWinEffect();
             break;
         case 100:
-            message = `🎉 МЕГА ВЫИГРЫШ! ${winAmount} G!`;
+            message = `🎉 МЕГА ВЫИГРЫШ! +100 G!`;
             playSound('winSound');
             showWinEffect();
             break;
         case 50:
-            message = `💰 БОЛЬШОЙ ВЫИГРЫШ! ${winAmount} G!`;
+            message = `💰 БОЛЬШОЙ ВЫИГРЫШ! +50 G!`;
             playSound('winSound');
             showWinEffect();
             break;
         case 25:
-            message = `🎊 Отлично! Выигрыш ${winAmount} G!`;
+            message = `🎊 Отлично! +25 G!`;
             playSound('winSound');
             break;
         case 15:
-            message = `🎯 Хорошо! Выигрыш ${winAmount} G!`;
+            message = `🎯 Хорошо! +15 G!`;
             playSound('winSound');
             break;
         case 10:
-            message = `👍 Неплохо! Выигрыш ${winAmount} G!`;
+            message = `👍 Неплохо! +10 G!`;
             playSound('winSound');
             break;
         case 5:
-            message = `👌 Хороший старт! Выигрыш ${winAmount} G!`;
+            message = `👌 Хороший старт! +5 G!`;
             playSound('winSound');
             break;
         case 0:
-            message = `😔 К сожалению, вы ничего не выиграли`;
+            message = `😔 Вы ничего не выиграли`;
             playSound('loseSound');
             break;
-        default:
-            message = `🎰 Вы выиграли ${winAmount} G!`;
-            playSound('winSound');
     }
     
-    // Добавляем информацию о типе спина
     if (isFree) {
         message += ' (Бесплатный спин)';
     }
     
     showNotification(message);
     
-    // Вибрация (для мобильных устройств)
+    // Haptic feedback
     if (window.haptic) {
         if (winAmount >= 100) {
             window.haptic.impactOccurred('heavy');
