@@ -1,83 +1,26 @@
 * {
+    box-sizing: border-box;
     margin: 0;
     padding: 0;
-    box-sizing: border-box;
-    font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
 }
 
 body {
-    background: radial-gradient(circle at 20% 30%, #1a1e2a, #0c0f14);
-    min-height: 100vh;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
     align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background: #0f1217;
+    font-family: system-ui, sans-serif;
     padding: 16px;
 }
 
-.app {
-    max-width: 560px;
-    width: 100%;
-    background: rgba(18, 22, 30, 0.9);
-    backdrop-filter: blur(8px);
-    border-radius: 40px;
-    padding: 24px;
-    border: 1px solid rgba(255, 215, 0, 0.35);
-    box-shadow: 0 20px 40px rgba(0,0,0,0.6);
-}
-
-/* Профиль */
-.profile {
-    background: #242a36;
-    border-radius: 28px;
-    padding: 16px 20px;
-    display: flex;
-    align-items: center;
-    gap: 18px;
-    margin-bottom: 20px;
-    border: 1px solid rgba(255, 215, 0, 0.25);
-}
-
-.avatar {
-    width: 64px;
-    height: 64px;
-    border-radius: 50%;
-    border: 3px solid #ffd700;
-    background: #3a4050;
-    object-fit: cover;
-}
-
-.profile-info {
-    flex: 1;
-}
-
-.username {
-    font-size: 18px;
-    font-weight: 700;
-    color: white;
-    margin-bottom: 6px;
-}
-
-.balance {
-    background: #0f1116;
-    padding: 6px 16px;
-    border-radius: 40px;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    border: 1px solid #ffd700;
-    color: #ffd700;
-    font-size: 20px;
-    font-weight: bold;
-}
-
-.balance-amount {
-    font-size: 24px;
-    margin-left: 4px;
-}
-
-/* Колесо — CSS-метод (адаптация из thecode.media) */
+/* ----- КОЛЕСО ФОРТУНЫ (ПОЛНОСТЬЮ ИЗ СТАТЬИ) ----- */
 .deal-wheel {
-    --size: clamp(260px, 70vmin, 460px);
+    --size: clamp(280px, 80vmin, 500px);
+    --lg-hs: 0 0%;
+    --lg-stop: 50%;
+    --lg: linear-gradient(hsl(var(--lg-hs) 0%) 0 var(--lg-stop), hsl(var(--lg-hs) 20%) var(--lg-stop) 100%);
     position: relative;
     display: grid;
     grid-gap: calc(var(--size) / 20);
@@ -98,18 +41,16 @@ body {
     grid-template-areas: "spinner";
     width: var(--size);
     height: var(--size);
-    transform: rotate(calc(var(--rotate, 0) * 1deg));
+    transform: rotate(calc(var(--rotate, 25) * 1deg));
     border-radius: 50%;
-    box-shadow: 0 0 20px rgba(255,215,0,0.3);
+    box-shadow: 0 0 20px rgba(0,0,0,0.3);
     transition: transform 3s cubic-bezier(0.25, 0.1, 0.15, 1);
-    border: 4px solid #ffd700;
 }
 
 .spinner * {
     grid-area: spinner;
 }
 
-/* Сектор с текстом */
 .prize {
     display: flex;
     align-items: center;
@@ -123,10 +64,8 @@ body {
     color: white;
     text-shadow: 2px 2px 0 rgba(0,0,0,0.5);
     font-size: 1.2em;
-    letter-spacing: 1px;
 }
 
-/* Стрелка (всегда сверху) */
 .ticker {
     position: relative;
     left: calc(var(--size) / 2 - 6px);
@@ -142,30 +81,65 @@ body {
     z-index: 10;
 }
 
-/* Панель кнопок */
+/* ----- ПРОФИЛЬ (ДОБАВЛЕНО) ----- */
+.profile {
+    grid-area: trigger;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: #1e232b;
+    padding: 12px 20px;
+    border-radius: 50px;
+    border: 1px solid #ffd70080;
+    margin-bottom: 10px;
+    width: 100%;
+}
+
+.avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 2px solid #ffd700;
+    background: #2f3540;
+}
+
+.username {
+    color: white;
+    font-weight: bold;
+    margin-bottom: 4px;
+}
+
+.balance {
+    color: #ffd700;
+    font-weight: bold;
+    font-size: 1.2rem;
+}
+
+/* ----- КНОПКИ ----- */
 .btn-panel {
     grid-area: trigger;
     display: flex;
-    justify-content: center;
     gap: 16px;
     margin-top: 20px;
+    width: 100%;
 }
 
 .btn-spin {
     color: white;
+    background: black;
     border: none;
     font-size: inherit;
-    padding: 0.8rem 1.2rem;
-    border-radius: 40px;
+    padding: 0.9rem 1.5rem;
+    border-radius: 3rem;
     cursor: pointer;
     font-weight: 800;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 6px;
+    flex: 1;
     box-shadow: 0 6px 0 rgba(0,0,0,0.3);
     transition: 0.06s;
-    flex: 1;
 }
 
 .btn-spin:active {
@@ -175,50 +149,43 @@ body {
 
 .btn-spin:disabled {
     opacity: 0.5;
-    transform: none;
-    box-shadow: 0 6px 0 rgba(0,0,0,0.3);
     cursor: not-allowed;
+    transform: none;
 }
 
-.btn-free {
-    background: linear-gradient(145deg, #27ae60, #1e7e4a);
-}
-
-.btn-paid {
-    background: linear-gradient(145deg, #e67e22, #b85e1a);
-}
+.btn-free { background: #27ae60; }
+.btn-paid { background: #e67e22; }
 
 .timer {
     font-size: 0.8rem;
-    background: rgba(0,0,0,0.6);
-    padding: 4px 14px;
-    border-radius: 40px;
+    background: rgba(0,0,0,0.5);
+    padding: 4px 12px;
+    border-radius: 50px;
 }
 
-/* Результат */
+/* ----- РЕЗУЛЬТАТ ----- */
 .result-message {
-    background: #1e232c;
-    padding: 18px;
+    background: #1e232b;
+    padding: 16px;
     border-radius: 20px;
-    margin: 24px 0 16px;
+    margin-top: 24px;
     text-align: center;
-    font-size: 26px;
+    font-size: 28px;
     font-weight: 900;
     color: #ffd700;
     border: 1px solid #ffd700;
-    min-height: 82px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    letter-spacing: 2px;
+    width: 100%;
+    max-width: 500px;
 }
 
-/* Шансы */
+/* ----- ШАНСЫ (АДАПТАЦИЯ ИЗ СТАТЬИ) ----- */
 .chances-block {
-    background: #1e232c;
+    background: #1e232b;
     border-radius: 20px;
     padding: 16px;
-    margin-top: 8px;
+    margin-top: 24px;
+    width: 100%;
+    max-width: 500px;
 }
 
 .chances-tabs {
@@ -234,17 +201,13 @@ body {
     background: #2f3540;
     color: white;
     border-radius: 12px;
-    font-size: 14px;
     font-weight: bold;
     cursor: pointer;
-    transition: 0.2s;
-    border: 1px solid transparent;
 }
 
 .tab.active {
     background: #ffd700;
     color: black;
-    border-color: #ffd700;
 }
 
 .chances-grid {
@@ -259,27 +222,17 @@ body {
     padding: 8px 12px;
     background: #2f3540;
     border-radius: 10px;
-    font-size: 14px;
-    color: #fff;
+    color: white;
 }
 
-.chance-item.jackpot {
-    background: #c0392b;
-    border: 1px solid #ffd700;
-}
+.chance-item.jackpot { background: #c0392b; }
+.chance-item.highlight { background: #f39c12; color: black; }
 
-.chance-item.highlight {
-    background: #f39c12;
-    border: 1px solid #ffd700;
-    color: black;
-    font-weight: bold;
-}
-
-@keyframes jackpotFlash {
+@keyframes jackpot {
     0%, 100% { transform: scale(1); background: #ffd700; color: black; }
-    50% { transform: scale(1.08); background: #ffaa00; color: black; }
+    50% { transform: scale(1.1); background: #ffaa00; color: black; }
 }
 
 .jackpot-animation {
-    animation: jackpotFlash 0.5s ease 3;
+    animation: jackpot 0.5s ease 3;
 }

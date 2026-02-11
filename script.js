@@ -1,230 +1,197 @@
-// ============================================================
-//  STANDOFF 2 · РУЛЕТКА (ГРАДУСНАЯ МОДЕЛЬ)
-//  ВЫИГРЫШ ОПРЕДЕЛЯЕТСЯ ИСКЛЮЧИТЕЛЬНО ПО УГЛУ ОСТАНОВКИ СТРЕЛКИ
-// ============================================================
+// =============================================
+//  КОЛЕСО ФОРТУНЫ — МЕХАНИКА ИЗ thecode.media
+//  АДАПТИРОВАНО ПОД STANDOFF 2 (8 СЕКТОРОВ,
+//  ШАНСЫ, БАЛАНС, БЕСПЛАТНАЯ КРУТКА 24Ч)
+// =============================================
 
 // ---------- Telegram WebApp ----------
 const tg = window.Telegram?.WebApp;
-if (tg) {
-    tg.ready();
-    tg.expand();
-}
+if (tg) tg.ready();
 
 // ---------- ПОЛЬЗОВАТЕЛЬ ----------
 const user = tg?.initDataUnsafe?.user || {
     first_name: 'Игрок',
     id: Date.now()
 };
+document.getElementById('username').innerText = user.first_name;
+document.getElementById('avatar').src = user.photo_url || `https://ui-avatars.com/api/?name=${user.first_name}&background=ffd700&color=000&size=128`;
 
-// ============ 1. ЖЁСТКО ЗАДАННЫЕ СЕКТОРА (УГЛЫ В ГРАДУСАХ) ============
-// Сектора расположены ПО ЧАСОВОЙ СТРЕЛКЕ, начиная с верхней точки (0°)
-// Каждый сектор занимает 45 градусов.
-const SECTORS = [
-    { value: 250, color: 'hsl(0, 60%, 40%)',  start: 0,   end: 45   }, // 0-45
-    { value: 100, color: 'hsl(0, 70%, 55%)',  start: 45,  end: 90  }, // 45-90
-    { value: 50,  color: 'hsl(270, 50%, 50%)', start: 90,  end: 135 }, // 90-135
-    { value: 25,  color: 'hsl(210, 70%, 55%)', start: 135, end: 180 }, // 135-180
-    { value: 15,  color: 'hsl(145, 60%, 45%)', start: 180, end: 225 }, // 180-225
-    { value: 10,  color: 'hsl(50, 80%, 55%)',  start: 225, end: 270 }, // 225-270
-    { value: 5,   color: 'hsl(30, 70%, 55%)',  start: 270, end: 315 }, // 270-315
-    { value: 0,   color: 'hsl(0, 65%, 50%)',   start: 315, end: 360 }  // 315-360
+// ---------- ДАННЫЕ СЕКТОРОВ ----------
+const PRIZES = [
+    { text: '250', color: 'hsl(0, 60%, 40%)' },
+    { text: '100', color: 'hsl(0, 70%, 55%)' },
+    { text: '50',  color: 'hsl(270, 50%, 50%)' },
+    { text: '25',  color: 'hsl(210, 70%, 55%)' },
+    { text: '15',  color: 'hsl(145, 60%, 45%)' },
+    { text: '10',  color: 'hsl(50, 80%, 55%)' },
+    { text: '5',   color: 'hsl(30, 70%, 55%)' },
+    { text: '0',   color: 'hsl(0, 65%, 50%)' }
 ];
 
-// ---------- ШАНСЫ (ТОЧНО ПО ТВОИМ ТАБЛИЦАМ) ----------
-const FREE_DISTRIBUTION = [
-    { value: 250, chance: 0.01 },
-    { value: 100, chance: 0.1 },
-    { value: 50,  chance: 0.7 },
-    { value: 25,  chance: 1.8 },
-    { value: 15,  chance: 4 },
-    { value: 10,  chance: 7.5 },
-    { value: 5,   chance: 15 },
-    { value: 0,   chance: 70.89 }
-];
-
-const PAID_DISTRIBUTION = [
-    { value: 250, chance: 0.1 },
-    { value: 100, chance: 0.5 },
-    { value: 50,  chance: 2 },
-    { value: 25,  chance: 5 },
-    { value: 15,  chance: 10 },
-    { value: 10,  chance: 15 },
-    { value: 5,   chance: 17.4 },
-    { value: 0,   chance: 50 }
-];
+// ---------- ШАНСЫ ----------
+const FREE_CHANCES = [0.01, 0.1, 0.7, 1.8, 4, 7.5, 15, 70.89];
+const PAID_CHANCES = [0.1, 0.5, 2, 5, 10, 15, 17.4, 50];
 
 // ---------- ИГРОВЫЕ ПЕРЕМЕННЫЕ ----------
 let balance = 100;
 let lastFreeTime = null;
 let isSpinning = false;
-let currentRotate = 0; // текущий угол поворота колеса (--rotate в CSS)
-let animFrame = null;
+let spinTimeout = null;
 
 // ---------- DOM ЭЛЕМЕНТЫ ----------
-const spinnerEl = document.getElementById('spinner');
-const balanceSpan = document.getElementById('balanceValue');
-const resultEl = document.getElementById('resultMessage');
-const freeBtn = document.getElementById('freeSpinBtn');
-const paidBtn = document.getElementById('paidSpinBtn');
+const wheel = document.querySelector('.deal-wheel');
+const spinner = wheel.querySelector('.spinner');
+const trigger = wheel.querySelectorAll('.btn-spin');
+const ticker = wheel.querySelector('.ticker');
+const balanceSpan = document.getElementById('balance');
+const resultEl = document.getElementById('result');
+const freeBtn = document.getElementById('freeBtn');
+const paidBtn = document.getElementById('paidBtn');
 const timerSpan = document.getElementById('freeTimer');
-const usernameEl = document.getElementById('username');
-const avatarEl = document.getElementById('avatar');
 const chancesList = document.getElementById('chancesList');
-const tabFree = document.getElementById('tabFree');
-const tabPaid = document.getElementById('tabPaid');
 
-// ---------- ПРОФИЛЬ ----------
-usernameEl.textContent = user.first_name + (user.last_name ? ' ' + user.last_name : '');
-avatarEl.src = user.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.first_name)}&background=ffd700&color=000&size=128`;
-
-// ---------- ЗАГРУЗКА ИЗ LOCALSTORAGE ----------
-function loadGame() {
-    try {
-        const saved = localStorage.getItem(`standoff2_degrees_${user.id}`);
-        if (saved) {
-            const data = JSON.parse(saved);
-            balance = data.balance ?? 100;
-            lastFreeTime = data.lastFree ?? null;
-            // восстановим угол поворота (чтобы колесо не прыгало при перезагрузке)
-            currentRotate = data.currentRotate ?? 0;
-            spinnerEl.style.setProperty('--rotate', currentRotate);
-        }
-    } catch(e) {}
-    balanceSpan.textContent = balance;
+// ---------- ЗАГРУЗКА СОХРАНЕНИЙ ----------
+const saved = localStorage.getItem(`standoff2_article_${user.id}`);
+if (saved) {
+    const data = JSON.parse(saved);
+    balance = data.balance || 100;
+    lastFreeTime = data.lastFree || null;
 }
-loadGame();
+balanceSpan.innerText = balance;
 
 // ---------- СОХРАНЕНИЕ ----------
 function saveGame() {
-    localStorage.setItem(`standoff2_degrees_${user.id}`, JSON.stringify({
+    localStorage.setItem(`standoff2_article_${user.id}`, JSON.stringify({
         balance: balance,
-        lastFree: lastFreeTime,
-        currentRotate: currentRotate
+        lastFree: lastFreeTime
     }));
 }
 
-// ============ 2. ПОСТРОЕНИЕ КОЛЕСА (ГРАДИЕНТ + ТЕКСТ) ============
-function buildWheel() {
-    // Цветные сектора через conic-gradient
-    // Начальный угол -90deg — чтобы первый сектор (0-45) оказался сверху
-    const gradientParts = SECTORS.map((s, i) => {
-        const percentStart = (i * 100) / SECTORS.length;
-        const percentEnd = ((i + 1) * 100) / SECTORS.length;
-        return `${s.color} ${percentStart}% ${percentEnd}%`;
-    }).join(', ');
-    spinnerEl.style.background = `conic-gradient(from -90deg, ${gradientParts})`;
+// ============ 1. ПОСТРОЕНИЕ КОЛЕСА (ТОЧНО КАК В СТАТЬЕ) ============
+const prizeSlice = 360 / PRIZES.length;
+const prizeOffset = Math.floor(180 / PRIZES.length);
 
-    // Текстовые метки (цифры) — каждая повёрнута к центру
-    spinnerEl.innerHTML = '';
-    SECTORS.forEach((sector, index) => {
-        // Угол поворота текста: чтобы он читался по радиусу
-        // Формула из оригинальной статьи: (index * 45) * -1 - (180/8)
-        const textRotate = (index * 45) * -1 - 22.5;
-        const li = document.createElement('li');
-        li.className = 'prize';
-        li.style.setProperty('--rotate', `${textRotate}deg`);
-        li.innerHTML = `<span class="text">${sector.value}</span>`;
-        spinnerEl.appendChild(li);
-    });
+// Расставляем текст по секторам
+PRIZES.forEach(({ text, color }, i) => {
+    const rotation = (prizeSlice * i * -1) - prizeOffset;
+    spinner.insertAdjacentHTML(
+        'beforeend',
+        `<li class="prize" style="--rotate: ${rotation}deg">
+            <span class="text">${text}</span>
+        </li>`
+    );
+});
+
+// Рисуем разноцветные сектора (conic-gradient)
+const gradientColors = PRIZES.map(({ color }, i) => {
+    const percent = ((i + 1) * 100) / PRIZES.length;
+    return `${color} 0 ${percent}%`;
+}).reverse().join(', ');
+spinner.style.background = `conic-gradient(from -90deg, ${gradientColors})`;
+
+// ---------- ПОЛУЧАЕМ ВСЕ ЭЛЕМЕНТЫ ПРИЗОВ ----------
+const prizeNodes = wheel.querySelectorAll('.prize');
+
+// ============ 2. ОПРЕДЕЛЕНИЕ ВЫИГРЫША ПО УГЛУ ============
+function getSectorIndex(angle) {
+    let normalized = ((angle % 360) + 360) % 360;
+    // Учитываем, что из-за rotate(25deg) смещение есть
+    // ВАЖНО: в статье используется смещение, но мы его убрали для простоты
+    // Мы задали начальный rotate 25deg в CSS. При вычислении сектора нужно это учесть.
+    const effectiveAngle = (normalized + 25) % 360;
+    return Math.floor(effectiveAngle / prizeSlice) % PRIZES.length;
 }
-buildWheel();
 
-// ============ 3. ВЫБОР СЛУЧАЙНОГО УГЛА С УЧЁТОМ ВЕРОЯТНОСТЕЙ ============
-function getRandomAngleByChances(isPaid) {
-    const distribution = isPaid ? PAID_DISTRIBUTION : FREE_DISTRIBUTION;
-    
-    // 1. Выбираем сектор согласно шансам
+// ============ 3. ФУНКЦИЯ ВРАЩЕНИЯ ============
+function spinWheel(targetRotate = null) {
+    if (isSpinning) return;
+    isSpinning = true;
+
+    // Если targetRotate не задан, генерируем случайный угол с учётом шансов
+    if (targetRotate === null) {
+        // ЭТО МЫ ЗАМЕНИМ НА ВЫБОР ПО ШАНСАМ
+        const isPaid = (trigger === paidBtn); // Но тут мы будем вызывать отдельно
+        // Пока заглушка
+        targetRotate = 25 + Math.floor(Math.random() * 360);
+    }
+
+    // Крутим колесо (логика из статьи)
+    const spin = () => {
+        // Плавное замедление
+        spinner.style.transition = 'transform 3s cubic-bezier(0.25, 0.1, 0.15, 1)';
+        spinner.style.transform = `rotate(${targetRotate}deg)`;
+    };
+    spin();
+
+    // Обработка остановки
+    const stopSpin = () => {
+        isSpinning = false;
+        spinner.style.transition = 'none';
+
+        // Получаем текущий угол поворота
+        const style = window.getComputedStyle(spinner);
+        const matrix = style.transform;
+        let angle = 0;
+        if (matrix !== 'none') {
+            const values = matrix.split('(')[1].split(')')[0].split(',');
+            const a = values[0];
+            const b = values[1];
+            angle = Math.round(Math.atan2(b, a) * (180 / Math.PI));
+        }
+        angle = (angle + 360) % 360;
+
+        // Определяем сектор
+        const sectorIndex = getSectorIndex(angle);
+        const winValue = parseInt(PRIZES[sectorIndex].text);
+        return winValue;
+    };
+
+    // Очищаем предыдущий таймер
+    if (spinTimeout) clearTimeout(spinTimeout);
+    spinTimeout = setTimeout(() => {
+        const win = stopSpin();
+        // Обработчик будет вызван из handleSpin
+    }, 3200);
+}
+
+// ============ 4. ВЫБОР УГЛА ПО ШАНСАМ ============
+function getAngleByChances(isPaid) {
+    const chances = isPaid ? PAID_CHANCES : FREE_CHANCES;
     const rand = Math.random() * 100;
     let cumulative = 0;
-    let selectedSector = null;
-    for (let item of distribution) {
-        cumulative += item.chance;
+    let selectedIndex = 0;
+    for (let i = 0; i < chances.length; i++) {
+        cumulative += chances[i];
         if (rand < cumulative) {
-            selectedSector = SECTORS.find(s => s.value === item.value);
+            selectedIndex = i;
             break;
         }
     }
-    if (!selectedSector) selectedSector = SECTORS[SECTORS.length - 1]; // 0G на всякий случай
-
-    // 2. Генерируем случайный угол ВНУТРИ выбранного сектора
-    const angle = selectedSector.start + Math.random() * (selectedSector.end - selectedSector.start);
-    return { angle, selectedSector };
+    // Генерируем случайный угол внутри выбранного сектора
+    const minAngle = selectedIndex * prizeSlice + 25; // +25 из-за rotate
+    const maxAngle = (selectedIndex + 1) * prizeSlice + 25;
+    const targetAngle = minAngle + Math.random() * (maxAngle - minAngle);
+    return { targetAngle, selectedIndex, winValue: parseInt(PRIZES[selectedIndex].text) };
 }
 
-// ============ 4. ОПРЕДЕЛЕНИЕ СЕКТОРА ПО УГЛУ ============
-function getSectorByAngle(angleDeg) {
-    // Нормализуем угол в [0, 360)
-    let norm = ((angleDeg % 360) + 360) % 360;
-    for (let sector of SECTORS) {
-        if (norm >= sector.start && norm < sector.end) {
-            return sector;
-        }
-    }
-    // Крайний случай: 360° попадает в последний сектор
-    if (norm === 360) return SECTORS[SECTORS.length - 1];
-    return SECTORS[0]; // fallback
-}
-
-// ============ 5. АНИМАЦИЯ ВРАЩЕНИЯ ============
-function spinToAngle(targetAngle) {
-    return new Promise((resolve) => {
-        if (isSpinning) return resolve();
-        isSpinning = true;
-
-        // Добавляем несколько полных оборотов для красоты
-        const spins = 8;
-        const startRotate = currentRotate;
-        const delta = (spins * 360) + targetAngle - (startRotate % 360);
-        const finalRotate = startRotate + delta;
-
-        const startTime = performance.now();
-        const duration = 2800;
-
-        function animate(now) {
-            const elapsed = now - startTime;
-            const progress = Math.min(elapsed / duration, 1);
-            const easeOut = 1 - Math.pow(1 - progress, 3);
-            currentRotate = startRotate + (finalRotate - startRotate) * easeOut;
-            spinnerEl.style.setProperty('--rotate', currentRotate);
-
-            if (progress < 1) {
-                animFrame = requestAnimationFrame(animate);
-            } else {
-                currentRotate = finalRotate % 360;
-                spinnerEl.style.setProperty('--rotate', currentRotate);
-                isSpinning = false;
-                resolve();
-            }
-        }
-        animFrame = requestAnimationFrame(animate);
-    });
-}
-
-// ============ 6. ОБРАБОТКА КРУТКИ ============
+// ============ 5. ОСНОВНАЯ ЛОГИКА КРУТКИ ============
 async function handleSpin(isPaid) {
-    if (isSpinning) {
-        alert('Колесо уже крутится!');
-        return;
-    }
+    if (isSpinning) return alert('Колесо крутится!');
 
-    // ----- Бесплатная крутка -----
+    // Бесплатная крутка
     if (!isPaid) {
         if (lastFreeTime) {
-            const hoursPassed = (Date.now() - lastFreeTime) / (1000 * 60 * 60);
-            if (hoursPassed < 24) {
-                const left = 24 - hoursPassed;
-                const h = Math.floor(left);
-                const m = Math.floor((left - h) * 60);
-                alert(`❌ Бесплатная крутка через ${h}ч ${m}м`);
-                return;
+            const hours = (Date.now() - lastFreeTime) / 3600000;
+            if (hours < 24) {
+                const left = 24 - hours;
+                return alert(`❌ Бесплатно через ${Math.floor(left)}ч ${Math.floor((left%1)*60)}м`);
             }
         }
     }
 
-    // ----- Платная крутка -----
+    // Платная крутка
     if (isPaid && balance < 10) {
-        alert('❌ Недостаточно G!');
-        return;
+        return alert('❌ Недостаточно G!');
     }
 
     // Блокируем кнопки
@@ -234,115 +201,110 @@ async function handleSpin(isPaid) {
     // Списываем плату
     if (isPaid) {
         balance -= 10;
-        balanceSpan.textContent = balance;
+        balanceSpan.innerText = balance;
     }
 
-    // ----- ВЫБИРАЕМ СЛУЧАЙНЫЙ УГОЛ С УЧЁТОМ ШАНСОВ -----
-    const { angle, selectedSector } = getRandomAngleByChances(isPaid);
-    
-    resultEl.textContent = '🎰 КРУТИМ...';
+    // Выбираем выигрыш
+    const { targetAngle, winValue } = getAngleByChances(isPaid);
+    resultEl.innerText = '🎰 КРУТИМ...';
 
-    // ----- ВРАЩАЕМ К ЭТОМУ УГЛУ -----
-    await spinToAngle(angle);
+    // Вращаем
+    spinner.style.transition = 'transform 3s cubic-bezier(0.25, 0.1, 0.15, 1)';
+    spinner.style.transform = `rotate(${targetAngle}deg)`;
 
-    // ----- ОПРЕДЕЛЯЕМ ВЫИГРЫШ ПО ТЕКУЩЕМУ УГЛУ (для надёжности) -----
-    const currentAngle = ((currentRotate % 360) + 360) % 360;
-    const winSector = getSectorByAngle(currentAngle);
-    const winValue = winSector.value;
+    // Ждём окончания анимации
+    await new Promise(resolve => {
+        if (spinTimeout) clearTimeout(spinTimeout);
+        spinTimeout = setTimeout(resolve, 3200);
+    });
+
+    isSpinning = false;
 
     // Начисляем выигрыш
     balance += winValue;
-    balanceSpan.textContent = balance;
+    balanceSpan.innerText = balance;
 
-    // Обновляем время бесплатной крутки
+    // Для бесплатной крутки фиксируем время
     if (!isPaid) {
         lastFreeTime = Date.now();
     }
 
     saveGame();
 
-    // ----- ОТОБРАЖАЕМ РЕЗУЛЬТАТ -----
+    // Показываем результат
     if (winValue >= 100) {
-        resultEl.textContent = `🔥 ДЖЕКПОТ! +${winValue}G 🔥`;
+        resultEl.innerText = `🔥 ДЖЕКПОТ! +${winValue}G 🔥`;
         resultEl.classList.add('jackpot-animation');
         setTimeout(() => resultEl.classList.remove('jackpot-animation'), 1500);
         tg?.HapticFeedback?.impactOccurred('heavy');
     } else if (winValue >= 50) {
-        resultEl.textContent = `⚡ +${winValue}G ⚡`;
+        resultEl.innerText = `⚡ +${winValue}G ⚡`;
         tg?.HapticFeedback?.impactOccurred('medium');
     } else if (winValue > 0) {
-        resultEl.textContent = `🎉 +${winValue}G`;
+        resultEl.innerText = `🎉 +${winValue}G`;
         tg?.HapticFeedback?.impactOccurred('light');
     } else {
-        resultEl.textContent = `💔 0G...`;
+        resultEl.innerText = `💔 0G...`;
         tg?.HapticFeedback?.notificationOccurred('error');
     }
 
     // Разблокировка кнопок
-    updateTimer();
     paidBtn.disabled = balance < 10;
-    if (!isPaid) freeBtn.disabled = true; // таймер включит сам
+    updateTimer();
 }
 
-// ============ 7. ТАЙМЕР БЕСПЛАТНОЙ КРУТКИ ============
+// ============ 6. ТАЙМЕР БЕСПЛАТНОЙ КРУТКИ ============
 function updateTimer() {
     if (!lastFreeTime) {
         freeBtn.disabled = false;
-        timerSpan.textContent = 'Готово';
+        timerSpan.innerText = 'Готово';
         return;
     }
-    const hours = (Date.now() - lastFreeTime) / (1000 * 60 * 60);
+    const hours = (Date.now() - lastFreeTime) / 3600000;
     if (hours >= 24) {
         freeBtn.disabled = false;
-        timerSpan.textContent = 'Готово';
+        timerSpan.innerText = 'Готово';
     } else {
         freeBtn.disabled = true;
         const left = 24 - hours;
-        const h = Math.floor(left);
-        const m = Math.floor((left - h) * 60);
-        timerSpan.textContent = `${h}ч ${m}м`;
+        timerSpan.innerText = `${Math.floor(left)}ч ${Math.floor((left % 1) * 60)}м`;
     }
 }
 
-// ============ 8. ОТОБРАЖЕНИЕ ШАНСОВ ============
+// ============ 7. ОТОБРАЖЕНИЕ ШАНСОВ ============
 function displayChances(isPaid) {
-    const table = isPaid ? PAID_DISTRIBUTION : FREE_DISTRIBUTION;
+    const chances = isPaid ? PAID_CHANCES : FREE_CHANCES;
     let html = '';
-    for (let item of table) {
+    PRIZES.forEach((prize, i) => {
         let cls = 'chance-item';
-        if (item.value === 250) cls += ' jackpot';
-        if (item.value === 100) cls += ' highlight';
-        html += `<div class="${cls}"><span>${item.value} G</span><span>${item.chance}%</span></div>`;
-    }
+        if (prize.text === '250') cls += ' jackpot';
+        if (prize.text === '100') cls += ' highlight';
+        html += `<div class="${cls}"><span>${prize.text} G</span><span>${chances[i]}%</span></div>`;
+    });
     chancesList.innerHTML = html;
 }
 
-// ============ 9. ОБРАБОТЧИКИ СОБЫТИЙ ============
+// ============ 8. ПОДПИСКА НА СОБЫТИЯ ============
 freeBtn.addEventListener('click', () => handleSpin(false));
 paidBtn.addEventListener('click', () => handleSpin(true));
 
-tabFree.addEventListener('click', () => {
-    tabFree.classList.add('active');
-    tabPaid.classList.remove('active');
+document.getElementById('tabFree').addEventListener('click', () => {
+    document.getElementById('tabFree').classList.add('active');
+    document.getElementById('tabPaid').classList.remove('active');
     displayChances(false);
 });
-tabPaid.addEventListener('click', () => {
-    tabPaid.classList.add('active');
-    tabFree.classList.remove('active');
+document.getElementById('tabPaid').addEventListener('click', () => {
+    document.getElementById('tabPaid').classList.add('active');
+    document.getElementById('tabFree').classList.remove('active');
     displayChances(true);
 });
 
-// ============ 10. ИНИЦИАЛИЗАЦИЯ ============
-displayChances(false);
+// ============ 9. ИНИЦИАЛИЗАЦИЯ ============
 updateTimer();
+displayChances(false);
 paidBtn.disabled = balance < 10;
 
 // Автосохранение
 setInterval(saveGame, 30000);
 setInterval(updateTimer, 30000);
-
-// Сохранение при выходе
-window.addEventListener('beforeunload', () => {
-    if (animFrame) cancelAnimationFrame(animFrame);
-    saveGame();
-});
+window.addEventListener('beforeunload', saveGame);
