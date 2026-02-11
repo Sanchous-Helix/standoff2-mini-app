@@ -1,6 +1,8 @@
 // ============================================================
-// STANDOFF 2 РУЛЕТКА · ФИНАЛЬНАЯ РАБОЧАЯ ВЕРСИЯ
-// Стрелка всегда останавливается на ЦЕНТРЕ выигранного сектора
+// STANDOFF 2 · КОЛЕСО ФОРТУНЫ — ФИНАЛЬНАЯ РАБОЧАЯ ВЕРСИЯ
+// Основа — CSS-подход из thecode.media, полностью переработанный
+// под твои требования: шансы, баланс, Telegram, сохранение.
+// Стрелка ВСЕГДА останавливается на ЦЕНТРЕ выигранного сектора.
 // ============================================================
 
 // ---------- Telegram WebApp ----------
@@ -10,19 +12,25 @@ if (tg) {
     tg.expand();
 }
 
-// ---------- ЖЁСТКО ФИКСИРОВАННЫЕ ДАННЫЕ ----------
+// ---------- ДАННЫЕ ПОЛЬЗОВАТЕЛЯ ----------
+const user = tg?.initDataUnsafe?.user || {
+    first_name: 'Игрок',
+    id: Date.now()
+};
+
+// ---------- НАСТРОЙКИ СЕКТОРОВ (8 шт, точные углы центра) ----------
 const SECTORS = [
-    { value: 250, color: '#c0392b', centerDeg: 22.5 },   // 0° + 22.5
-    { value: 100, color: '#e84342', centerDeg: 67.5 },   // 45 + 22.5
-    { value: 50,  color: '#9b59b6', centerDeg: 112.5 },  // 90 + 22.5
-    { value: 25,  color: '#3498db', centerDeg: 157.5 },  // 135 + 22.5
-    { value: 15,  color: '#2ecc71', centerDeg: 202.5 },  // 180 + 22.5
-    { value: 10,  color: '#f1c40f', centerDeg: 247.5 },  // 225 + 22.5
-    { value: 5,   color: '#e67e22', centerDeg: 292.5 },  // 270 + 22.5
-    { value: 0,   color: '#e74c3c', centerDeg: 337.5 }   // 315 + 22.5
+    { value: 250, color: 'hsl(0, 60%, 40%)',  centerDeg: 22.5 },   // тёмно-красный
+    { value: 100, color: 'hsl(0, 70%, 55%)',  centerDeg: 67.5 },   // розовый
+    { value: 50,  color: 'hsl(270, 50%, 50%)', centerDeg: 112.5 }, // фиолетовый
+    { value: 25,  color: 'hsl(210, 70%, 55%)', centerDeg: 157.5 }, // синий
+    { value: 15,  color: 'hsl(145, 60%, 45%)', centerDeg: 202.5 }, // зелёный
+    { value: 10,  color: 'hsl(50, 80%, 55%)',  centerDeg: 247.5 }, // жёлтый
+    { value: 5,   color: 'hsl(30, 70%, 55%)',  centerDeg: 292.5 }, // оранжевый
+    { value: 0,   color: 'hsl(0, 65%, 50%)',   centerDeg: 337.5 }  // красный
 ];
 
-// Бесплатные шансы (сумма = 100%)
+// ---------- ШАНСЫ (ТОЧНО ПО ТВОИМ ТАБЛИЦАМ) ----------
 const FREE_DISTRIBUTION = [
     { value: 250, chance: 0.01 },
     { value: 100, chance: 0.1 },
@@ -34,7 +42,6 @@ const FREE_DISTRIBUTION = [
     { value: 0,   chance: 70.89 }
 ];
 
-// Платные шансы (10 голды)
 const PAID_DISTRIBUTION = [
     { value: 250, chance: 0.1 },
     { value: 100, chance: 0.5 },
@@ -48,30 +55,25 @@ const PAID_DISTRIBUTION = [
 
 // ---------- ИГРОВЫЕ ПЕРЕМЕННЫЕ ----------
 let balance = 100;
-let lastFreeTime = null;              // timestamp последней бесплатной крутки
+let lastFreeTime = null;
 let isSpinning = false;
-let currentAngleRad = 0;             // текущий угол в радианах
+let currentRotation = 25; // начальное смещение (CSS: --rotate, по умолч. 25)
 let animFrame = null;
 
 // ---------- DOM ЭЛЕМЕНТЫ ----------
-const canvas = document.getElementById('wheelCanvas');
-const ctx = canvas.getContext('2d');
+const spinnerEl = document.getElementById('spinner');
 const balanceSpan = document.getElementById('balanceValue');
-const resultDiv = document.getElementById('resultDisplay');
-const freeBtn = document.getElementById('freeButton');
-const paidBtn = document.getElementById('paidButton');
-const timerSpan = document.getElementById('timerDisplay');
+const resultEl = document.getElementById('resultMessage');
+const freeBtn = document.getElementById('freeSpinBtn');
+const paidBtn = document.getElementById('paidSpinBtn');
+const timerSpan = document.getElementById('freeTimer');
 const usernameEl = document.getElementById('username');
 const avatarEl = document.getElementById('avatar');
 const chancesList = document.getElementById('chancesList');
 const tabFree = document.getElementById('tabFree');
 const tabPaid = document.getElementById('tabPaid');
 
-// ---------- ЗАГРУЗКА ДАННЫХ ПОЛЬЗОВАТЕЛЯ (Telegram / Гость) ----------
-const user = tg?.initDataUnsafe?.user || {
-    first_name: 'Игрок',
-    id: Date.now()
-};
+// ---------- УСТАНОВКА ПРОФИЛЯ ----------
 usernameEl.textContent = user.first_name + (user.last_name ? ' ' + user.last_name : '');
 avatarEl.src = user.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.first_name)}&background=ffd700&color=000&size=128`;
 
@@ -84,7 +86,7 @@ function loadGame() {
             balance = data.balance ?? 100;
             lastFreeTime = data.lastFree ?? null;
         }
-    } catch (e) {}
+    } catch(e) {}
     balanceSpan.textContent = balance;
 }
 loadGame();
@@ -97,62 +99,36 @@ function saveGame() {
     }));
 }
 
-// ---------- ОТРИСОВКА КОЛЕСА ----------
-function drawWheel(angleRad = 0) {
-    const w = canvas.width, h = canvas.height;
-    const cx = w / 2, cy = h / 2;
-    const radius = Math.min(w, h) / 2 - 12;
-    const sectorRad = (Math.PI * 2) / SECTORS.length;
+// ---------- ОТРИСОВКА СЕКТОРОВ И ТЕКСТА ----------
+function buildWheel() {
+    // 1. Градиентный фон (цветные сектора)
+    const gradientColors = SECTORS.map((s, i) => {
+        const percent = ((i + 1) * 100) / SECTORS.length;
+        return `${s.color} 0 ${percent}%`;
+    }).reverse().join(', ');
+    spinnerEl.style.background = `conic-gradient(from -90deg, ${gradientColors})`;
 
-    ctx.clearRect(0, 0, w, h);
-
-    for (let i = 0; i < SECTORS.length; i++) {
-        const start = i * sectorRad + angleRad;
-        const end = start + sectorRad;
-
-        ctx.beginPath();
-        ctx.moveTo(cx, cy);
-        ctx.arc(cx, cy, radius, start, end);
-        ctx.closePath();
-        ctx.fillStyle = SECTORS[i].color;
-        ctx.fill();
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-
-        // Текст
-        ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(start + sectorRad / 2);
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.font = 'bold 24px Arial';
-        ctx.fillStyle = '#fff';
-        ctx.shadowColor = '#000';
-        ctx.shadowBlur = 6;
-        ctx.fillText(SECTORS[i].value, radius * 0.65, 0);
-        ctx.restore();
-    }
-
-    // Центральный круг
-    ctx.beginPath();
-    ctx.arc(cx, cy, 22, 0, 2 * Math.PI);
-    ctx.fillStyle = '#ffd700';
-    ctx.shadowBlur = 14;
-    ctx.fill();
-    ctx.shadowBlur = 0;
+    // 2. Текстовые метки
+    spinnerEl.innerHTML = ''; // очистка
+    SECTORS.forEach((sector, index) => {
+        const rotation = (index * (360 / SECTORS.length) * -1) - (180 / SECTORS.length);
+        const li = document.createElement('li');
+        li.className = 'prize';
+        li.style.setProperty('--rotate', `${rotation}deg`);
+        li.innerHTML = `<span class="text">${sector.value}</span>`;
+        spinnerEl.appendChild(li);
+    });
 }
+buildWheel();
 
-// ---------- ВЫБОР ВЫИГРЫША ПО ШАНСАМ ----------
-function pickWinValue(isPaid) {
+// ---------- ВЫБОР ВЫИГРЫША (ЧЕСТНО, ДО ВРАЩЕНИЯ) ----------
+function getWinValue(isPaid) {
     const table = isPaid ? PAID_DISTRIBUTION : FREE_DISTRIBUTION;
     const rand = Math.random() * 100;
     let cumulative = 0;
-    for (let i = 0; i < table.length; i++) {
-        cumulative += table[i].chance;
-        if (rand < cumulative) {
-            return table[i].value;
-        }
+    for (let item of table) {
+        cumulative += item.chance;
+        if (rand < cumulative) return item.value;
     }
     return 0;
 }
@@ -163,35 +139,36 @@ function spinToWin(winValue) {
         if (isSpinning) return resolve();
         isSpinning = true;
 
+        // находим сектор с нужным значением
         const sector = SECTORS.find(s => s.value === winValue);
         if (!sector) {
             isSpinning = false;
             return resolve();
         }
 
-        const targetDeg = sector.centerDeg;
-        const targetRad = targetDeg * Math.PI / 180;
-        const startRad = currentAngleRad;
-        const spins = 8; // количество полных оборотов
-        const fullTurns = spins * 2 * Math.PI;
-        let delta = fullTurns + targetRad - (startRad % (2 * Math.PI));
-        const finalRad = startRad + delta;
+        // целевой угол: чтобы стрелка (которая наверху) указывала на центр сектора
+        // стрелка всегда на 12 часах, поэтому нужно, чтобы rotate = centerDeg - начальное смещение
+        const targetRotation = sector.centerDeg - 25; // 25 — базовый rotate из CSS
+        // добавляем 8 полных оборотов
+        const spins = 8;
+        const finalRotation = currentRotation + (spins * 360) + 
+            ((targetRotation - (currentRotation % 360) + 360) % 360);
 
         const startTime = performance.now();
         const duration = 2800;
 
-        function animate(now) {
-            const elapsed = now - startTime;
+        function animate(time) {
+            const elapsed = time - startTime;
             const progress = Math.min(elapsed / duration, 1);
             const easeOut = 1 - Math.pow(1 - progress, 3);
-            currentAngleRad = startRad + (finalRad - startRad) * easeOut;
-            drawWheel(currentAngleRad);
+            currentRotation = currentRotation + (finalRotation - currentRotation) * easeOut;
+            spinnerEl.style.setProperty('--rotate', currentRotation);
 
             if (progress < 1) {
                 animFrame = requestAnimationFrame(animate);
             } else {
-                currentAngleRad = finalRad % (2 * Math.PI);
-                drawWheel(currentAngleRad);
+                currentRotation = finalRotation % 360;
+                spinnerEl.style.setProperty('--rotate', currentRotation);
                 isSpinning = false;
                 resolve();
             }
@@ -207,7 +184,7 @@ async function handleSpin(isPaid) {
         return;
     }
 
-    // Проверка бесплатной крутки
+    // ----- бесплатная крутка -----
     if (!isPaid) {
         if (lastFreeTime) {
             const hoursPassed = (Date.now() - lastFreeTime) / (1000 * 60 * 60);
@@ -221,63 +198,61 @@ async function handleSpin(isPaid) {
         }
     }
 
-    // Проверка платной крутки
+    // ----- платная крутка -----
     if (isPaid && balance < 10) {
         alert('❌ Недостаточно G!');
         return;
     }
 
-    // Блокировка кнопок
+    // блокируем кнопки
     freeBtn.disabled = true;
     paidBtn.disabled = true;
 
-    // Списание платы
+    // списываем плату
     if (isPaid) {
         balance -= 10;
         balanceSpan.textContent = balance;
     }
 
-    // ВЫБОР ВЫИГРЫША (до вращения!)
-    const win = pickWinValue(isPaid);
-    resultDiv.textContent = '🎰 КРУТИМ...';
+    // ВЫБОР ВЫИГРЫША (главное — до вращения!)
+    const win = getWinValue(isPaid);
+    resultEl.textContent = '🎰 КРУТИМ...';
 
-    // ВРАЩЕНИЕ
+    // вращение
     await spinToWin(win);
 
-    // НАЧИСЛЕНИЕ
+    // начисляем выигрыш
     balance += win;
     balanceSpan.textContent = balance;
 
-    // Обновление времени бесплатной крутки
+    // обновляем время бесплатной крутки
     if (!isPaid) {
         lastFreeTime = Date.now();
     }
 
     saveGame();
 
-    // ОТОБРАЖЕНИЕ РЕЗУЛЬТАТА
+    // ----- АНИМАЦИЯ И СООБЩЕНИЕ -----
     if (win >= 100) {
-        resultDiv.textContent = `🔥 ДЖЕКПОТ! +${win}G 🔥`;
-        resultDiv.classList.add('jackpot-animation');
-        setTimeout(() => resultDiv.classList.remove('jackpot-animation'), 1500);
+        resultEl.textContent = `🔥 ДЖЕКПОТ! +${win}G 🔥`;
+        resultEl.classList.add('jackpot-animation');
+        setTimeout(() => resultEl.classList.remove('jackpot-animation'), 1500);
         tg?.HapticFeedback?.impactOccurred('heavy');
     } else if (win >= 50) {
-        resultDiv.textContent = `⚡ +${win}G ⚡`;
+        resultEl.textContent = `⚡ +${win}G ⚡`;
         tg?.HapticFeedback?.impactOccurred('medium');
     } else if (win > 0) {
-        resultDiv.textContent = `🎉 +${win}G`;
+        resultEl.textContent = `🎉 +${win}G`;
         tg?.HapticFeedback?.impactOccurred('light');
     } else {
-        resultDiv.textContent = `💔 0G...`;
+        resultEl.textContent = `💔 0G...`;
         tg?.HapticFeedback?.notificationOccurred('error');
     }
 
-    // Обновление таймера и разблокировка кнопок
+    // обновляем таймер и разблокируем кнопки
     updateTimer();
     paidBtn.disabled = balance < 10;
-    if (!isPaid) {
-        freeBtn.disabled = true; // таймер сам включит через 24ч
-    }
+    if (!isPaid) freeBtn.disabled = true; // таймер сам включит через 24ч
 }
 
 // ---------- ТАЙМЕР БЕСПЛАТНОЙ КРУТКИ ----------
@@ -304,14 +279,11 @@ function updateTimer() {
 function displayChances(isPaid) {
     const table = isPaid ? PAID_DISTRIBUTION : FREE_DISTRIBUTION;
     let html = '';
-    for (let i = 0; i < table.length; i++) {
-        let className = 'chance-item';
-        if (table[i].value === 250) className += ' jackpot';
-        if (table[i].value === 100) className += ' highlight';
-        html += `<div class="${className}">
-            <span>${table[i].value} G</span>
-            <span>${table[i].chance}%</span>
-        </div>`;
+    for (let item of table) {
+        let cls = 'chance-item';
+        if (item.value === 250) cls += ' jackpot';
+        if (item.value === 100) cls += ' highlight';
+        html += `<div class="${cls}"><span>${item.value} G</span><span>${item.chance}%</span></div>`;
     }
     chancesList.innerHTML = html;
 }
@@ -333,9 +305,8 @@ freeBtn.addEventListener('click', () => handleSpin(false));
 paidBtn.addEventListener('click', () => handleSpin(true));
 
 // ---------- ИНИЦИАЛИЗАЦИЯ ----------
-drawWheel(currentAngleRad);
-updateTimer();
 displayChances(false);
+updateTimer();
 paidBtn.disabled = balance < 10;
 
 // ---------- АВТОСОХРАНЕНИЕ ----------

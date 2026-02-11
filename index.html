@@ -3,50 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Standoff 2 Рулетка · ФИНАЛ</title>
+    <title>Standoff 2 · Колесо фортуны</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-    <div class="game">
-        <!-- Профиль -->
+    <div class="app">
+        <!-- Шапка: профиль + баланс -->
         <div class="profile">
             <img id="avatar" class="avatar" src="" alt="avatar">
-            <div class="info">
-                <div id="username" class="name">Загрузка...</div>
+            <div class="profile-info">
+                <div id="username" class="username">Загрузка...</div>
                 <div class="balance">
-                    💰 <span id="balanceValue">100</span> G
+                    <span>💰</span>
+                    <span id="balanceValue" class="balance-amount">100</span>
+                    <span>G</span>
                 </div>
             </div>
         </div>
 
-        <!-- Колесо -->
-        <div class="wheel-box">
-            <canvas id="wheelCanvas" width="400" height="400"></canvas>
-            <div class="pointer">▼</div>
+        <!-- Колесо фортуны (структура из статьи) -->
+        <div class="deal-wheel">
+            <ul class="spinner" id="spinner"></ul>
+            <div class="ticker"></div>
+            <div class="btn-panel">
+                <button id="freeSpinBtn" class="btn-spin btn-free">
+                    🎁 БЕСПЛАТНО
+                    <span id="freeTimer" class="timer">24ч</span>
+                </button>
+                <button id="paidSpinBtn" class="btn-spin btn-paid">
+                    ⚡ КРУТИТЬ (10G)
+                </button>
+            </div>
         </div>
 
-        <!-- Результат -->
-        <div id="resultDisplay" class="result">🎲 КРУТИ!</div>
+        <!-- Результат вращения -->
+        <div id="resultMessage" class="result-message">🎲 НАЖМИ КРУТИТЬ</div>
 
-        <!-- Кнопки -->
-        <div class="actions">
-            <button id="freeButton" class="btn btn-free">
-                🎁 БЕСПЛАТНО
-                <span id="timerDisplay" class="timer">24ч</span>
-            </button>
-            <button id="paidButton" class="btn btn-paid">
-                ⚡ КРУТИТЬ (10G)
-            </button>
-        </div>
-
-        <!-- Таблицы шансов (переключение) -->
-        <div class="chances">
-            <div class="tabs">
+        <!-- Таблицы шансов (переключаемые) -->
+        <div class="chances-block">
+            <div class="chances-tabs">
                 <button id="tabFree" class="tab active">🎁 Бесплатно</button>
                 <button id="tabPaid" class="tab">⚡ За 10G</button>
             </div>
-            <div id="chancesList" class="chances-list"></div>
+            <div id="chancesList" class="chances-grid"></div>
         </div>
     </div>
     <script src="script.js"></script>
