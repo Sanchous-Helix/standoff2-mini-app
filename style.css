@@ -168,7 +168,8 @@ body::before {
     box-shadow: 
         inset 0 0 20px rgba(0, 0, 0, 0.5),
         0 0 30px rgba(255, 215, 0, 0.3);
-    transition: transform 5s cubic-bezier(0.2, 0.8, 0.3, 1);
+    transition: transform 4s cubic-bezier(0.1, 0.7, 0.1, 1);
+    will-change: transform;
 }
 
 .wheel-sector {
@@ -185,16 +186,22 @@ body::before {
     color: white;
     text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
     overflow: hidden;
+    border-right: 2px solid rgba(0, 0, 0, 0.3);
+    box-sizing: border-box;
 }
 
 .wheel-sector span {
     transform: rotate(45deg);
-    font-size: 16px;
+    font-size: 14px;
     font-weight: bold;
     text-align: center;
-    padding-left: 30px;
-    padding-top: 15px;
+    padding-left: 35px;
+    padding-top: 20px;
     width: 100px;
+    text-shadow: 
+        1px 1px 2px rgba(0, 0, 0, 0.8),
+        -1px -1px 2px rgba(0, 0, 0, 0.3);
+    letter-spacing: 0.5px;
 }
 
 .wheel-center {
@@ -208,18 +215,21 @@ body::before {
     border-radius: 50%;
     z-index: 10;
     border: 5px solid #1a1d24;
-    box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+    box-shadow: 
+        0 0 20px rgba(255, 215, 0, 0.8),
+        inset 0 0 10px rgba(0, 0, 0, 0.3);
 }
 
 .wheel-pointer {
     position: absolute;
-    top: -15px;
+    top: -20px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 20;
     color: #ff4444;
-    font-size: 40px;
+    font-size: 45px;
     text-shadow: 0 0 15px rgba(255, 68, 68, 0.8);
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5));
 }
 
 /* Controls */
@@ -373,49 +383,6 @@ body::before {
     font-weight: bold;
 }
 
-/* Chances Section */
-.chances-section {
-    background: linear-gradient(135deg, #1a1d24, #13161b);
-    border-radius: 15px;
-    padding: 15px;
-    margin: 15px 0;
-    border: 1px solid rgba(255, 215, 0, 0.2);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
-
-.chances-title {
-    color: #ffd700;
-    font-size: 14px;
-    margin-bottom: 10px;
-    text-align: center;
-}
-
-.chances-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.chance-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 12px;
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 8px;
-    border-left: 3px solid #ffd700;
-}
-
-.chance-prize {
-    font-weight: bold;
-    color: #ffd700;
-}
-
-.chance-percent {
-    color: #2ecc71;
-    font-weight: bold;
-}
-
 /* Notification */
 .notification {
     position: fixed;
@@ -486,6 +453,16 @@ body::before {
     margin-top: 15px;
 }
 
+/* Sector Colors */
+.sector-0 { background: linear-gradient(135deg, #5d6d7e, #3d4d5e); }
+.sector-5 { background: linear-gradient(135deg, #2ecc71, #1abc9c); }
+.sector-10 { background: linear-gradient(135deg, #3498db, #2980b9); }
+.sector-15 { background: linear-gradient(135deg, #9b59b6, #8e44ad); }
+.sector-25 { background: linear-gradient(135deg, #f39c12, #e67e22); }
+.sector-50 { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+.sector-100 { background: linear-gradient(135deg, #e91e63, #c2185b); }
+.sector-250 { background: linear-gradient(135deg, #00bcd4, #0097a7); }
+
 /* Responsive */
 @media (max-width: 480px) {
     .container {
@@ -502,158 +479,12 @@ body::before {
     }
     
     .wheel-sector span {
-        font-size: 14px;
+        font-size: 12px;
+        padding-left: 30px;
+        padding-top: 15px;
     }
     
     .stats-grid {
         grid-template-columns: 1fr;
     }
-}
-.wheel-sector {
-    position: absolute;
-    width: 50%;
-    height: 50%;
-    transform-origin: 100% 100%;
-    left: 0;
-    top: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-    color: white;
-    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
-    overflow: hidden;
-    /* Улучшенные границы */
-    border-right: 2px solid rgba(0, 0, 0, 0.3);
-    box-sizing: border-box;
-}
-
-/* Улучшенный указатель для точности */
-.wheel-pointer {
-    position: absolute;
-    top: -15px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 20;
-    color: #ff4444;
-    font-size: 40px;
-    text-shadow: 0 0 15px rgba(255, 68, 68, 0.8);
-    /* Улучшенная точность */
-    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5));
-}
-
-/* Центр рулетки для лучшей видимости */
-.wheel-center {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 60px;
-    height: 60px;
-    background: #ffd700;
-    border-radius: 50%;
-    z-index: 10;
-    border: 5px solid #1a1d24;
-    box-shadow: 
-        0 0 20px rgba(255, 215, 0, 0.8),
-        inset 0 0 10px rgba(0, 0, 0, 0.3);
-}
-
-/* Анимация вращения с более плавным завершением */
-.wheel {
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    position: relative;
-    overflow: hidden;
-    border: 10px solid #ffd700;
-    box-shadow: 
-        inset 0 0 20px rgba(0, 0, 0, 0.5),
-        0 0 30px rgba(255, 215, 0, 0.3);
-    /* Улучшенная анимация */
-    transition: transform 4s cubic-bezier(0.1, 0.7, 0.1, 1);
-    will-change: transform;
-}
-
-/* Текст в секторах для лучшей читаемости */
-.wheel-sector span {
-    transform: rotate(45deg);
-    font-size: 16px;
-    font-weight: bold;
-    text-align: center;
-    padding-left: 30px;
-    padding-top: 15px;
-    width: 100px;
-    /* Улучшенная читаемость */
-    text-shadow: 
-        1px 1px 2px rgba(0, 0, 0, 0.8),
-        -1px -1px 2px rgba(0, 0, 0, 0.3);
-    letter-spacing: 0.5px;
-}
-
-/* Debug overlay (можно отключить) */
-.debug-overlay {
-    position: fixed;
-    top: 10px;
-    left: 10px;
-    background: rgba(0, 0, 0, 0.8);
-    color: white;
-    padding: 10px;
-    border-radius: 5px;
-    font-size: 12px;
-    z-index: 1000;
-    display: none;
-}
-
-.sector-0 { background: linear-gradient(135deg, #5d6d7e, #3d4d5e); }
-.sector-5 { background: linear-gradient(135deg, #2ecc71, #1abc9c); }
-.sector-10 { background: linear-gradient(135deg, #3498db, #2980b9); }
-.sector-15 { background: linear-gradient(135deg, #9b59b6, #8e44ad); }
-.sector-25 { background: linear-gradient(135deg, #f39c12, #e67e22); }
-.sector-50 { background: linear-gradient(135deg, #e74c3c, #c0392b); }
-.sector-100 { background: linear-gradient(135deg, #e91e63, #c2185b); }
-.sector-250 { background: linear-gradient(135deg, #00bcd4, #0097a7); }
-
-/* Для улучшенного отображения равных секторов */
-.wheel-sector {
-    /* Убедитесь, что все сектора одинакового размера */
-    border-right: 2px solid rgba(0, 0, 0, 0.3);
-    box-sizing: border-box;
-}
-
-/* Улучшенный текст в секторах */
-.wheel-sector span {
-    transform: rotate(45deg);
-    font-size: 14px;
-    font-weight: bold;
-    text-align: center;
-    padding-left: 35px;
-    padding-top: 20px;
-    width: 100px;
-    text-shadow: 
-        1px 1px 2px rgba(0, 0, 0, 0.8),
-        -1px -1px 2px rgba(0, 0, 0, 0.3);
-    letter-spacing: 0.5px;
-}
-
-/* Адаптация для мобильных */
-@media (max-width: 480px) {
-    .wheel-sector span {
-        font-size: 12px;
-        padding-left: 30px;
-        padding-top: 15px;
-    }
-}
-
-/* Улучшенный указатель */
-.wheel-pointer {
-    position: absolute;
-    top: -20px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 20;
-    color: #ff4444;
-    font-size: 45px;
-    text-shadow: 0 0 15px rgba(255, 68, 68, 0.8);
-    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5));
 }
