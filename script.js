@@ -3,7 +3,7 @@ let tg = window.Telegram?.WebApp;
 
 // Game data
 let gameData = {
-    balance: 100, // Начальный баланс для теста
+    balance: 100,
     totalSpins: 0,
     totalWon: 0,
     maxWin: 0,
@@ -12,32 +12,8 @@ let gameData = {
     freeSpinAvailable: true
 };
 
-// Шансы для бесплатной крутки
-const FREE_SPIN_PRIZES = [
-    { value: 0, chance: 70.89, text: '0 G', color: '#5d6d7e', class: 'sector-0' },
-    { value: 5, chance: 15, text: '5 G', color: '#2ecc71', class: 'sector-5' },
-    { value: 10, chance: 7.5, text: '10 G', color: '#3498db', class: 'sector-10' },
-    { value: 15, chance: 4, text: '15 G', color: '#9b59b6', class: 'sector-15' },
-    { value: 25, chance: 1.8, text: '25 G', color: '#f39c12', class: 'sector-25' },
-    { value: 50, chance: 0.7, text: '50 G', color: '#e74c3c', class: 'sector-50' },
-    { value: 100, chance: 0.1, text: '100 G', color: '#e91e63', class: 'sector-100' },
-    { value: 250, chance: 0.01, text: '250 G', color: '#00bcd4', class: 'sector-250' }
-];
-
-// Шансы для платной крутки (за 10 G)
-const PAID_SPIN_PRIZES = [
-    { value: 0, chance: 50, text: '0 G', color: '#5d6d7e', class: 'sector-0' },
-    { value: 5, chance: 17.4, text: '5 G', color: '#2ecc71', class: 'sector-5' },
-    { value: 10, chance: 15, text: '10 G', color: '#3498db', class: 'sector-10' },
-    { value: 15, chance: 10, text: '15 G', color: '#9b59b6', class: 'sector-15' },
-    { value: 25, chance: 5, text: '25 G', color: '#f39c12', class: 'sector-25' },
-    { value: 50, chance: 2, text: '50 G', color: '#e74c3c', class: 'sector-50' },
-    { value: 100, chance: 0.5, text: '100 G', color: '#e91e63', class: 'sector-100' },
-    { value: 250, chance: 0.1, text: '250 G', color: '#00bcd4', class: 'sector-250' }
-];
-
-// Все призы для отображения на колесе (должны соответствовать WHEEL_PRIZES_DISPLAY)
-const WHEEL_PRIZES_DISPLAY = [
+// Призы на колесе (все равные сектора)
+const WHEEL_PRIZES = [
     { value: 0, text: 'ПРОИГРЫШ', color: '#5d6d7e', class: 'sector-0' },
     { value: 5, text: '5 G', color: '#2ecc71', class: 'sector-5' },
     { value: 10, text: '10 G', color: '#3498db', class: 'sector-10' },
@@ -46,6 +22,30 @@ const WHEEL_PRIZES_DISPLAY = [
     { value: 50, text: '50 G', color: '#e74c3c', class: 'sector-50' },
     { value: 100, text: '100 G', color: '#e91e63', class: 'sector-100' },
     { value: 250, text: '250 G', color: '#00bcd4', class: 'sector-250' }
+];
+
+// Шансы для бесплатной крутки
+const FREE_SPIN_CHANCES = [
+    { value: 0, chance: 70.89 },
+    { value: 5, chance: 15 },
+    { value: 10, chance: 7.5 },
+    { value: 15, chance: 4 },
+    { value: 25, chance: 1.8 },
+    { value: 50, chance: 0.7 },
+    { value: 100, chance: 0.1 },
+    { value: 250, chance: 0.01 }
+];
+
+// Шансы для платной крутки (за 10 G)
+const PAID_SPIN_CHANCES = [
+    { value: 0, chance: 50 },
+    { value: 5, chance: 17.4 },
+    { value: 10, chance: 15 },
+    { value: 15, chance: 10 },
+    { value: 25, chance: 5 },
+    { value: 50, chance: 2 },
+    { value: 100, chance: 0.5 },
+    { value: 250, chance: 0.1 }
 ];
 
 // Spin costs
@@ -57,7 +57,7 @@ const FREE_SPIN_COOLDOWN = 4 * 60 * 60 * 1000;
 
 // Initialize game
 function initGame() {
-    console.log('🎡 Initializing GoldBank Roulette...');
+    console.log('🎡 Инициализация GoldBank Roulette...');
     
     if (tg) {
         tg.expand();
@@ -74,7 +74,7 @@ function initGame() {
     updateUI();
     startTimer();
     
-    console.log('✅ Game ready! Balance:', gameData.balance + ' G');
+    console.log('✅ Игра готова! Баланс:', gameData.balance + ' G');
 }
 
 // Load Telegram user data
@@ -106,10 +106,10 @@ function loadSavedGame() {
                 gameData.freeSpinAvailable = timeSinceLastFreeSpin >= FREE_SPIN_COOLDOWN;
             }
             
-            console.log('🎮 Game loaded from save');
+            console.log('🎮 Игра загружена из сохранения');
         }
     } catch (e) {
-        console.error('❌ Load error:', e);
+        console.error('❌ Ошибка загрузки:', e);
     }
 }
 
@@ -129,10 +129,10 @@ function initWheel() {
     const wheel = document.getElementById('wheel');
     wheel.innerHTML = '';
     
-    const totalSectors = WHEEL_PRIZES_DISPLAY.length;
+    const totalSectors = WHEEL_PRIZES.length;
     const sectorAngle = 360 / totalSectors;
     
-    WHEEL_PRIZES_DISPLAY.forEach((prize, index) => {
+    WHEEL_PRIZES.forEach((prize, index) => {
         const sector = document.createElement('div');
         sector.className = `wheel-sector ${prize.class}`;
         sector.dataset.prize = prize.value;
@@ -232,13 +232,13 @@ function updateFreeSpinTimer() {
 
 // Spin wheel
 let isSpinning = false;
-let currentPrize = null;
+let currentWinValue = 0;
 
 function spinWheel(isFree) {
     if (isSpinning) return;
     
     const spinCost = isFree ? FREE_SPIN_COST : PAID_SPIN_COST;
-    const prizePool = isFree ? FREE_SPIN_PRIZES : PAID_SPIN_PRIZES;
+    const chances = isFree ? FREE_SPIN_CHANCES : PAID_SPIN_CHANCES;
     
     if (!isFree && gameData.balance < spinCost) {
         showNotification(`❌ Недостаточно G для спина! Нужно ${spinCost} G`);
@@ -264,37 +264,51 @@ function spinWheel(isFree) {
     updateUI();
     playSound('spinSound');
     
-    // Get random prize BEFORE spinning
-    currentPrize = getRandomPrize(prizePool);
-    console.log(`🎯 Выбран приз: ${currentPrize.text}, значение: ${currentPrize.value}`);
+    // Получаем случайный выигрыш
+    currentWinValue = getRandomPrizeValue(chances);
+    console.log(`🎯 Выпало: ${currentWinValue} G`);
     
-    // Найти индекс этого приза на колесе (по значению)
-    let prizeIndex = WHEEL_PRIZES_DISPLAY.findIndex(p => p.value === currentPrize.value);
+    // Находим индекс этого приза на колесе
+    const prizeIndex = WHEEL_PRIZES.findIndex(p => p.value === currentWinValue);
+    console.log(`🎡 Индекс на колесе: ${prizeIndex} (${WHEEL_PRIZES[prizeIndex].text})`);
     
-    // Если индекс не найден (должен всегда находиться)
-    if (prizeIndex === -1) {
-        console.error('❌ Приз не найден на колесе:', currentPrize);
-        prizeIndex = 0; // По умолчанию проигрыш
+    // Вращаем колесо
+    rotateWheelToPrize(prizeIndex, () => {
+        processSpinResult(currentWinValue, isFree);
+        isSpinning = false;
+        updateUI();
+        saveGame();
+    });
+}
+
+// Get random prize value
+function getRandomPrizeValue(chances) {
+    const totalChance = chances.reduce((sum, prize) => sum + prize.chance, 0);
+    let random = Math.random() * totalChance;
+    
+    for (const prize of chances) {
+        if (random < prize.chance) {
+            return prize.value;
+        }
+        random -= prize.chance;
     }
     
-    console.log(`🎡 Индекс приза на колесе: ${prizeIndex} (${WHEEL_PRIZES_DISPLAY[prizeIndex].text})`);
-    
+    return chances[0].value;
+}
+
+// Rotate wheel to specific prize
+function rotateWheelToPrize(prizeIndex, callback) {
     const wheel = document.getElementById('wheel');
-    const totalSectors = WHEEL_PRIZES_DISPLAY.length;
+    const totalSectors = WHEEL_PRIZES.length;
     const sectorAngle = 360 / totalSectors;
     
     // Количество полных оборотов
     const fullRotations = 5;
     
-    // Рассчитываем угол остановки так, чтобы нужный сектор оказался ПОД указателем
+    // Рассчитываем угол остановки
     // Указатель находится наверху (0 градусов)
-    // Нам нужно повернуть колесо так, чтобы сектор с индексом prizeIndex оказался сверху
-    
-    // Каждый сектор занимает sectorAngle градусов
-    // Мы хотим, чтобы указатель указывал на ВЕРХ сектора (начало сектора)
-    const stopAngle = (fullRotations * 360) + 
-                      (360 - (prizeIndex * sectorAngle)) + 
-                      (sectorAngle / 2); // Смещаем немного, чтобы сектор был под указателем
+    // Нужно чтобы сектор prizeIndex оказался под указателем
+    const stopAngle = (fullRotations * 360) + (360 - (prizeIndex * sectorAngle));
     
     // Reset wheel position
     wheel.style.transition = 'none';
@@ -304,60 +318,15 @@ function spinWheel(isFree) {
     void wheel.offsetWidth;
     
     // Start spinning animation
-    wheel.style.transition = 'transform 4s cubic-bezier(0.2, 0.8, 0.3, 1)';
+    wheel.style.transition = 'transform 3s cubic-bezier(0.2, 0.8, 0.3, 1)';
     wheel.style.transform = `rotate(${stopAngle}deg)`;
     
-    // Process result after spin completes
-    setTimeout(() => {
-        processSpinResult(currentPrize, isFree);
-        isSpinning = false;
-        updateUI();
-        saveGame();
-        
-        // Проверка: какой сектор под указателем
-        const finalRotation = stopAngle % 360;
-        const sectorAtPointer = Math.floor((finalRotation % 360) / sectorAngle);
-        const actualSectorIndex = (totalSectors - sectorAtPointer) % totalSectors;
-        
-        console.log(`📍 Конечный поворот: ${finalRotation.toFixed(1)}°`);
-        console.log(`📍 Сектор под указателем: ${actualSectorIndex} (${WHEEL_PRIZES_DISPLAY[actualSectorIndex].text})`);
-        console.log(`📍 Ожидался сектор: ${prizeIndex} (${WHEEL_PRIZES_DISPLAY[prizeIndex].text})`);
-        
-        if (actualSectorIndex !== prizeIndex) {
-            console.warn('⚠️ Внимание: сектор под указателем не соответствует ожидаемому!');
-        }
-    }, 4000);
-}
-
-// Get random prize from specified pool
-function getRandomPrize(prizePool) {
-    const totalChance = prizePool.reduce((sum, prize) => sum + prize.chance, 0);
-    let random = Math.random() * totalChance;
-    
-    for (const prize of prizePool) {
-        if (random < prize.chance) {
-            return {
-                value: prize.value,
-                text: prize.text,
-                color: prize.color,
-                class: prize.class
-            };
-        }
-        random -= prize.chance;
-    }
-    
-    return {
-        value: prizePool[0].value,
-        text: prizePool[0].text,
-        color: prizePool[0].color,
-        class: prizePool[0].class
-    };
+    // Callback after animation completes
+    setTimeout(callback, 3000);
 }
 
 // Process spin result
-function processSpinResult(prize, isFree) {
-    const winAmount = prize.value;
-    
+function processSpinResult(winAmount, isFree) {
     if (winAmount > 0) {
         gameData.balance += winAmount;
         gameData.totalWon += winAmount;
@@ -370,6 +339,7 @@ function processSpinResult(prize, isFree) {
     
     // Show result
     let message = '';
+    const prizeText = WHEEL_PRIZES.find(p => p.value === winAmount)?.text || '0 G';
     
     if (winAmount === 250) {
         message = `🏆 СУПЕР ДЖЕКПОТ! Вы выиграли ${winAmount} G!`;
@@ -401,7 +371,7 @@ function processSpinResult(prize, isFree) {
     }
     
     // Добавляем информацию о том, что показано на колесе
-    message += ` (На колесе: ${WHEEL_PRIZES_DISPLAY.find(p => p.value === winAmount)?.text || '0 G'})`;
+    message += ` (На колесе: ${prizeText})`;
     
     if (isFree) {
         message += ' - Бесплатный спин!';
