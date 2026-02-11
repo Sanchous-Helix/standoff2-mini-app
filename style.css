@@ -509,3 +509,25 @@ body::before {
     padding-left: 25px;
     padding-top: 25px;
 }
+.debug-panel {
+    position: fixed;
+    bottom: 10px;
+    left: 10px;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 10px;
+    border-radius: 5px;
+    font-size: 12px;
+    z-index: 1000;
+    display: none;
+}
+
+.debug-panel.active {
+    display: block;
+}
+
+.debug-panel h3 {
+    margin: 0 0 5px 0;
+    color: #ffd700;
+    font-size: 12px;
+}

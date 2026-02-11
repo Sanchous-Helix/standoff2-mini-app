@@ -36,8 +36,8 @@ const PAID_SPIN_PRIZES = [
     { value: 250, chance: 0.1, text: '250 G', color: '#00bcd4', class: 'sector-250' }
 ];
 
-// Все призы для отображения на колесе
-const WHEEL_PRIZES = [
+// Все призы для отображения на колесе (должны соответствовать WHEEL_PRIZES_DISPLAY)
+const WHEEL_PRIZES_DISPLAY = [
     { value: 0, text: 'ПРОИГРЫШ', color: '#5d6d7e', class: 'sector-0' },
     { value: 5, text: '5 G', color: '#2ecc71', class: 'sector-5' },
     { value: 10, text: '10 G', color: '#3498db', class: 'sector-10' },
@@ -129,10 +129,10 @@ function initWheel() {
     const wheel = document.getElementById('wheel');
     wheel.innerHTML = '';
     
-    const totalSectors = WHEEL_PRIZES.length;
+    const totalSectors = WHEEL_PRIZES_DISPLAY.length;
     const sectorAngle = 360 / totalSectors;
     
-    WHEEL_PRIZES.forEach((prize, index) => {
+    WHEEL_PRIZES_DISPLAY.forEach((prize, index) => {
         const sector = document.createElement('div');
         sector.className = `wheel-sector ${prize.class}`;
         sector.dataset.prize = prize.value;
@@ -232,6 +232,7 @@ function updateFreeSpinTimer() {
 
 // Spin wheel
 let isSpinning = false;
+let currentPrize = null;
 
 function spinWheel(isFree) {
     if (isSpinning) return;
@@ -264,28 +265,36 @@ function spinWheel(isFree) {
     playSound('spinSound');
     
     // Get random prize BEFORE spinning
-    const prize = getRandomPrize(prizePool);
-    console.log(`🎯 Выбран приз: ${prize.text}, значение: ${prize.value}`);
+    currentPrize = getRandomPrize(prizePool);
+    console.log(`🎯 Выбран приз: ${currentPrize.text}, значение: ${currentPrize.value}`);
     
     // Найти индекс этого приза на колесе (по значению)
-    let prizeIndex = WHEEL_PRIZES.findIndex(p => p.value === prize.value);
-    if (prizeIndex === -1) prizeIndex = 0; // Если не нашли - показываем проигрыш
+    let prizeIndex = WHEEL_PRIZES_DISPLAY.findIndex(p => p.value === currentPrize.value);
+    
+    // Если индекс не найден (должен всегда находиться)
+    if (prizeIndex === -1) {
+        console.error('❌ Приз не найден на колесе:', currentPrize);
+        prizeIndex = 0; // По умолчанию проигрыш
+    }
+    
+    console.log(`🎡 Индекс приза на колесе: ${prizeIndex} (${WHEEL_PRIZES_DISPLAY[prizeIndex].text})`);
     
     const wheel = document.getElementById('wheel');
-    const totalSectors = WHEEL_PRIZES.length;
+    const totalSectors = WHEEL_PRIZES_DISPLAY.length;
     const sectorAngle = 360 / totalSectors;
     
     // Количество полных оборотов
     const fullRotations = 5;
-    // На сколько градусов сместить, чтобы указатель указывал на нужный сектор
-    const pointerOffset = -90;
     
-    // Рассчитываем угол остановки - сектор должен оказаться сверху под указателем
-    // При этом учитываем, что сектора начинаются с 0 (12 часов) и идут по часовой стрелке
-    const stopAngle = fullRotations * 360 + 
-                     (totalSectors - prizeIndex) * sectorAngle + 
-                     (sectorAngle / 2) + 
-                     pointerOffset;
+    // Рассчитываем угол остановки так, чтобы нужный сектор оказался ПОД указателем
+    // Указатель находится наверху (0 градусов)
+    // Нам нужно повернуть колесо так, чтобы сектор с индексом prizeIndex оказался сверху
+    
+    // Каждый сектор занимает sectorAngle градусов
+    // Мы хотим, чтобы указатель указывал на ВЕРХ сектора (начало сектора)
+    const stopAngle = (fullRotations * 360) + 
+                      (360 - (prizeIndex * sectorAngle)) + 
+                      (sectorAngle / 2); // Смещаем немного, чтобы сектор был под указателем
     
     // Reset wheel position
     wheel.style.transition = 'none';
@@ -300,15 +309,23 @@ function spinWheel(isFree) {
     
     // Process result after spin completes
     setTimeout(() => {
-        processSpinResult(prize, isFree);
+        processSpinResult(currentPrize, isFree);
         isSpinning = false;
         updateUI();
         saveGame();
         
-        // Debug info
+        // Проверка: какой сектор под указателем
         const finalRotation = stopAngle % 360;
-        const sectorAtPointer = Math.floor(((360 - finalRotation) % 360) / sectorAngle);
-        console.log(`📍 Конечный поворот: ${finalRotation.toFixed(1)}°, Сектор под указателем: ${sectorAtPointer}, Ожидался: ${prizeIndex}`);
+        const sectorAtPointer = Math.floor((finalRotation % 360) / sectorAngle);
+        const actualSectorIndex = (totalSectors - sectorAtPointer) % totalSectors;
+        
+        console.log(`📍 Конечный поворот: ${finalRotation.toFixed(1)}°`);
+        console.log(`📍 Сектор под указателем: ${actualSectorIndex} (${WHEEL_PRIZES_DISPLAY[actualSectorIndex].text})`);
+        console.log(`📍 Ожидался сектор: ${prizeIndex} (${WHEEL_PRIZES_DISPLAY[prizeIndex].text})`);
+        
+        if (actualSectorIndex !== prizeIndex) {
+            console.warn('⚠️ Внимание: сектор под указателем не соответствует ожидаемому!');
+        }
     }, 4000);
 }
 
@@ -319,12 +336,22 @@ function getRandomPrize(prizePool) {
     
     for (const prize of prizePool) {
         if (random < prize.chance) {
-            return prize;
+            return {
+                value: prize.value,
+                text: prize.text,
+                color: prize.color,
+                class: prize.class
+            };
         }
         random -= prize.chance;
     }
     
-    return prizePool[0];
+    return {
+        value: prizePool[0].value,
+        text: prizePool[0].text,
+        color: prizePool[0].color,
+        class: prizePool[0].class
+    };
 }
 
 // Process spin result
@@ -373,8 +400,11 @@ function processSpinResult(prize, isFree) {
         playSound('loseSound');
     }
     
+    // Добавляем информацию о том, что показано на колесе
+    message += ` (На колесе: ${WHEEL_PRIZES_DISPLAY.find(p => p.value === winAmount)?.text || '0 G'})`;
+    
     if (isFree) {
-        message += ' (Бесплатный спин!)';
+        message += ' - Бесплатный спин!';
     }
     
     showNotification(message);
@@ -413,7 +443,7 @@ function showNotification(message) {
         setTimeout(() => {
             notification.style.display = 'none';
         }, 300);
-    }, 3000);
+    }, 4000);
 }
 
 // Play sound
