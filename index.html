@@ -3,54 +3,64 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Standoff 2 · Рулетка</title>
+    <title>Standoff 2 · Кейс-рулетка</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
     <div class="game">
-        <!-- Профиль -->
+        <!-- Профиль игрока (Telegram) -->
         <div class="profile">
             <img id="avatar" class="avatar" src="" alt="avatar">
-            <div>
+            <div class="profile-info">
                 <div id="username" class="username">Загрузка...</div>
-                <div class="balance">
-                    💰 <span id="balance">100</span> G
+                <div class="balance-wrapper">
+                    <span class="balance-label">💰 Баланс</span>
+                    <span id="balance" class="balance-value">100</span>
+                    <span class="currency">G</span>
                 </div>
             </div>
         </div>
 
-        <!-- Колесо фортуны -->
-        <div class="wheel-container">
-            <div class="wheel" id="wheel">
-                <!-- 8 секторов с числами -->
-                <div class="sector" style="--rotate: 0deg;">250</div>
-                <div class="sector" style="--rotate: 45deg;">100</div>
-                <div class="sector" style="--rotate: 90deg;">50</div>
-                <div class="sector" style="--rotate: 135deg;">25</div>
-                <div class="sector" style="--rotate: 180deg;">15</div>
-                <div class="sector" style="--rotate: 225deg;">10</div>
-                <div class="sector" style="--rotate: 270deg;">5</div>
-                <div class="sector" style="--rotate: 315deg;">0</div>
+        <!-- Кейс-рулетка (бегущие значения) -->
+        <div class="case-container">
+            <div class="case-window">
+                <div id="caseDisplay" class="case-display">🎲</div>
             </div>
-            <div class="pointer">▼</div>
+            <div class="case-info">
+                <span class="case-price">⚡ 10G за прокрут</span>
+                <span class="case-jackpot">🔥 ДЖЕКПОТ: 250G</span>
+            </div>
+        </div>
+
+        <!-- Анимация бегущих значений -->
+        <div class="running-values" id="runningValues"></div>
+
+        <!-- Кнопки управления -->
+        <div class="controls">
+            <button id="freeSpinBtn" class="btn btn-free">
+                <span class="btn-icon">🎁</span>
+                <span class="btn-text">БЕСПЛАТНО</span>
+                <span id="freeTimer" class="timer">24:00</span>
+            </button>
+            <button id="paidSpinBtn" class="btn btn-paid">
+                <span class="btn-icon">⚡</span>
+                <span class="btn-text">КРУТИТЬ (10G)</span>
+            </button>
         </div>
 
         <!-- Результат -->
-        <div id="result" class="result">🎲 КРУТИ!</div>
+        <div id="result" class="result-message">НАЖМИ КРУТИТЬ</div>
 
-        <!-- Кнопки -->
-        <div class="buttons">
-            <button id="freeBtn" class="btn free">
-                🎁 БЕСПЛАТНО
-                <span id="freeTimer" class="timer"></span>
-            </button>
-            <button id="paidBtn" class="btn paid">
-                ⚡ КРУТИТЬ (10G)
-            </button>
+        <!-- Шансы -->
+        <div class="chances-section">
+            <div class="chances-tabs">
+                <button id="tabFree" class="tab active">🎁 Бесплатно</button>
+                <button id="tabPaid" class="tab">⚡ За 10G</button>
+            </div>
+            <div id="chancesList" class="chances-grid"></div>
         </div>
     </div>
-
     <script src="script.js"></script>
 </body>
 </html>
