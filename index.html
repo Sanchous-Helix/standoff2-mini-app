@@ -9,57 +9,43 @@
 </head>
 <body>
     <div class="game">
-        <!-- Профиль игрока (Telegram) -->
+        <!-- Профиль -->
         <div class="profile">
             <img id="avatar" class="avatar" src="" alt="avatar">
             <div class="profile-info">
                 <div id="username" class="username">Загрузка...</div>
-                <div class="balance-wrapper">
-                    <span class="balance-label">💰 Баланс</span>
+                <div class="balance">
+                    <span class="balance-label">💰</span>
                     <span id="balance" class="balance-value">100</span>
                     <span class="currency">G</span>
                 </div>
             </div>
         </div>
 
-        <!-- Кейс-рулетка (бегущие значения) -->
+        <!-- Кейс-рулетка -->
         <div class="case-container">
             <div class="case-window">
-                <div id="caseDisplay" class="case-display">🎲</div>
+                <div id="caseDisplay" class="case-display">0</div>
             </div>
-            <div class="case-info">
-                <span class="case-price">⚡ 10G за прокрут</span>
-                <span class="case-jackpot">🔥 ДЖЕКПОТ: 250G</span>
-            </div>
+            <div class="case-glow" id="caseGlow"></div>
         </div>
 
-        <!-- Анимация бегущих значений -->
-        <div class="running-values" id="runningValues"></div>
-
-        <!-- Кнопки управления -->
+        <!-- Кнопки -->
         <div class="controls">
             <button id="freeSpinBtn" class="btn btn-free">
                 <span class="btn-icon">🎁</span>
                 <span class="btn-text">БЕСПЛАТНО</span>
-                <span id="freeTimer" class="timer">24:00</span>
+                <span id="freeTimer" class="timer">24ч</span>
             </button>
             <button id="paidSpinBtn" class="btn btn-paid">
                 <span class="btn-icon">⚡</span>
-                <span class="btn-text">КРУТИТЬ (10G)</span>
+                <span class="btn-text">КРУТИТЬ</span>
+                <span class="price">10G</span>
             </button>
         </div>
 
-        <!-- Результат -->
-        <div id="result" class="result-message">НАЖМИ КРУТИТЬ</div>
-
-        <!-- Шансы -->
-        <div class="chances-section">
-            <div class="chances-tabs">
-                <button id="tabFree" class="tab active">🎁 Бесплатно</button>
-                <button id="tabPaid" class="tab">⚡ За 10G</button>
-            </div>
-            <div id="chancesList" class="chances-grid"></div>
-        </div>
+        <!-- Результат (скрыт до выигрыша) -->
+        <div id="result" class="result-message"></div>
     </div>
     <script src="script.js"></script>
 </body>

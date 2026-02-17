@@ -1,56 +1,70 @@
 // ========================================
 //  STANDOFF 2 · КЕЙС-РУЛЕТКА
-//  СЛУЧАЙНЫЙ ВЫБОР С АНИМАЦИЕЙ ПЕРЕБОРА
+//  ПЛАВНАЯ СМЕНА ЧИСЕЛ, ШАНСЫ СКРЫТЫ
 // ========================================
 
-// Telegram WebApp
+// ---------- Telegram ----------
 const tg = window.Telegram?.WebApp;
 if (tg) {
     tg.ready();
     tg.expand();
 }
 
-// ---------- ДАННЫЕ ПОЛЬЗОВАТЕЛЯ ----------
+// ---------- ПОЛЬЗОВАТЕЛЬ ----------
 const user = tg?.initDataUnsafe?.user || {
     first_name: 'Игрок',
     id: Date.now()
 };
 
-document.getElementById('username').innerText = user.first_name + (user.last_name ? ' ' + user.last_name : '');
+document.getElementById('username').innerText = user.first_name;
 document.getElementById('avatar').src = user.photo_url || 
     `https://ui-avatars.com/api/?name=${encodeURIComponent(user.first_name)}&background=ffd700&color=000&size=128`;
 
+// ---------- ШАНСЫ (СКРЫТЫЕ) ----------
+const FREE_CHANCES = [
+    { value: 0, prob: 70.89 },
+    { value: 5, prob: 15 },
+    { value: 10, prob: 7.5 },
+    { value: 15, prob: 4 },
+    { value: 25, prob: 1.8 },
+    { value: 50, prob: 0.7 },
+    { value: 100, prob: 0.1 },
+    { value: 250, prob: 0.01 }
+];
+
+const PAID_CHANCES = [
+    { value: 0, prob: 50 },
+    { value: 5, prob: 17.4 },
+    { value: 10, prob: 15 },
+    { value: 15, prob: 10 },
+    { value: 25, prob: 5 },
+    { value: 50, prob: 2 },
+    { value: 100, prob: 0.5 },
+    { value: 250, prob: 0.1 }
+];
+
 // ---------- НАСТРОЙКИ ----------
-const VALUES = [0, 5, 10, 15, 25, 50, 100, 250];
-
-const FREE_CHANCES = {
-    values: [0, 5, 10, 15, 25, 50, 100, 250],
-    probs: [70.89, 15, 7.5, 4, 1.8, 0.7, 0.1, 0.01]
-};
-
-const PAID_CHANCES = {
-    values: [0, 5, 10, 15, 25, 50, 100, 250],
-    probs: [50, 17.4, 15, 10, 5, 2, 0.5, 0.1]
-};
-
 const SPIN_COST = 10;
 const COOLDOWN_HOURS = 24;
+const VALUES = [0, 5, 10, 15, 25, 50, 100, 250];
+const ANIMATION_DURATION = 2000; // 2 секунды
+const FRAME_RATE = 30; // смен в секунду
 
 // ---------- СОСТОЯНИЕ ----------
 let balance = 100;
 let lastFreeSpin = null;
 let isSpinning = false;
-let spinInterval = null;
+let animationInterval = null;
+let glowInterval = null;
 
-// ---------- DOM ЭЛЕМЕНТЫ ----------
+// ---------- DOM ----------
 const caseDisplay = document.getElementById('caseDisplay');
 const balanceEl = document.getElementById('balance');
 const resultEl = document.getElementById('result');
 const freeBtn = document.getElementById('freeSpinBtn');
 const paidBtn = document.getElementById('paidSpinBtn');
 const freeTimer = document.getElementById('freeTimer');
-const chancesList = document.getElementById('chancesList');
-const runningValues = document.getElementById('runningValues');
+const caseContainer = document.querySelector('.case-container');
 
 // ---------- ЗАГРУЗКА ----------
 const saved = localStorage.getItem(`standoff_case_${user.id}`);
@@ -77,41 +91,44 @@ function getWinValue(isPaid) {
     const rand = Math.random() * 100;
     let cumulative = 0;
     
-    for (let i = 0; i < table.probs.length; i++) {
-        cumulative += table.probs[i];
+    for (let item of table) {
+        cumulative += item.prob;
         if (rand < cumulative) {
-            console.log(`🎲 Выигрыш: ${table.values[i]}G (шанс ${table.probs[i]}%)`);
-            return table.values[i];
+            return item.value;
         }
     }
     return 0;
 }
 
-// ---------- АНИМАЦИЯ ПЕРЕБОРА ----------
-function startRollingAnimation() {
-    let count = 0;
-    const maxRolls = 30; // Количество смен значений перед остановкой
-    
+// ---------- ПЛАВНАЯ АНИМАЦИЯ ----------
+function startSmoothAnimation() {
     return new Promise((resolve) => {
-        spinInterval = setInterval(() => {
-            // Показываем случайные значения
-            const randomIndex = Math.floor(Math.random() * VALUES.length);
-            caseDisplay.innerText = VALUES[randomIndex];
+        const startTime = performance.now();
+        const finalValue = getWinValue(isPaid);
+        
+        // Эффект свечения
+        caseContainer.classList.add('spinning');
+        
+        animationInterval = setInterval(() => {
+            const elapsed = performance.now() - startTime;
             
-            // Создаём бегущие точки для эффекта
-            let dots = '';
-            for (let i = 0; i < 10; i++) {
-                dots += Math.random() > 0.5 ? '●' : '○';
+            if (elapsed < ANIMATION_DURATION) {
+                // Плавно меняем числа
+                const randomValue = VALUES[Math.floor(Math.random() * VALUES.length)];
+                caseDisplay.innerText = randomValue;
+                
+                // Плавное изменение яркости
+                const progress = elapsed / ANIMATION_DURATION;
+                const opacity = 0.5 + Math.sin(progress * Math.PI * 8) * 0.5;
+                caseDisplay.style.opacity = opacity;
+            } else {
+                // Завершение анимации
+                clearInterval(animationInterval);
+                caseContainer.classList.remove('spinning');
+                caseDisplay.style.opacity = 1;
+                resolve(finalValue);
             }
-            runningValues.innerText = dots;
-            
-            count++;
-            if (count >= maxRolls) {
-                clearInterval(spinInterval);
-                runningValues.innerText = '';
-                resolve();
-            }
-        }, 80); // Смена каждые 80мс
+        }, 1000 / FRAME_RATE);
     });
 }
 
@@ -123,16 +140,14 @@ async function handleSpin(isPaid) {
     }
 
     // Проверка бесплатной крутки
-    if (!isPaid) {
-        if (lastFreeSpin) {
-            const hoursPassed = (Date.now() - lastFreeSpin) / (1000 * 60 * 60);
-            if (hoursPassed < COOLDOWN_HOURS) {
-                const left = COOLDOWN_HOURS - hoursPassed;
-                const h = Math.floor(left);
-                const m = Math.floor((left - h) * 60);
-                tg?.showAlert?.(`❌ Бесплатно через ${h}ч ${m}м`);
-                return;
-            }
+    if (!isPaid && lastFreeSpin) {
+        const hoursPassed = (Date.now() - lastFreeSpin) / (1000 * 60 * 60);
+        if (hoursPassed < COOLDOWN_HOURS) {
+            const left = COOLDOWN_HOURS - hoursPassed;
+            const h = Math.floor(left);
+            const m = Math.floor((left - h) * 60);
+            tg?.showAlert?.(`❌ Бесплатно через ${h}ч ${m}м`);
+            return;
         }
     }
 
@@ -146,7 +161,7 @@ async function handleSpin(isPaid) {
     isSpinning = true;
     freeBtn.disabled = true;
     paidBtn.disabled = true;
-    resultEl.innerText = '🎰 КРУТИМ...';
+    resultEl.innerText = '';
 
     // Списываем плату
     if (isPaid) {
@@ -155,10 +170,7 @@ async function handleSpin(isPaid) {
     }
 
     // Запускаем анимацию
-    await startRollingAnimation();
-
-    // Определяем выигрыш ПОСЛЕ анимации
-    const winValue = getWinValue(isPaid);
+    const winValue = await startSmoothAnimation();
     
     // Показываем финальное значение
     caseDisplay.innerText = winValue;
@@ -176,18 +188,18 @@ async function handleSpin(isPaid) {
 
     // Показываем результат
     if (winValue >= 100) {
-        resultEl.innerText = `🔥 ДЖЕКПОТ! +${winValue}G 🔥`;
-        caseDisplay.classList.add('flash');
-        setTimeout(() => caseDisplay.classList.remove('flash'), 1500);
+        resultEl.innerText = `🔥 +${winValue}G 🔥`;
+        caseDisplay.classList.add('jackpot');
+        setTimeout(() => caseDisplay.classList.remove('jackpot'), 1500);
         tg?.HapticFeedback?.impactOccurred('heavy');
     } else if (winValue >= 50) {
-        resultEl.innerText = `⚡ +${winValue}G ⚡`;
+        resultEl.innerText = `⚡ +${winValue}G`;
         tg?.HapticFeedback?.impactOccurred('medium');
     } else if (winValue > 0) {
         resultEl.innerText = `🎉 +${winValue}G`;
         tg?.HapticFeedback?.impactOccurred('light');
     } else {
-        resultEl.innerText = `💔 0G...`;
+        resultEl.innerText = `💔 0G`;
         tg?.HapticFeedback?.notificationOccurred('error');
     }
 
@@ -201,7 +213,7 @@ async function handleSpin(isPaid) {
 function updateFreeTimer() {
     if (!lastFreeSpin) {
         freeBtn.disabled = false;
-        freeTimer.innerText = '00:00';
+        freeTimer.innerText = '24ч';
         return;
     }
     
@@ -209,7 +221,7 @@ function updateFreeTimer() {
     
     if (hoursPassed >= COOLDOWN_HOURS) {
         freeBtn.disabled = false;
-        freeTimer.innerText = '00:00';
+        freeTimer.innerText = '24ч';
     } else {
         freeBtn.disabled = true;
         const left = COOLDOWN_HOURS - hoursPassed;
@@ -219,44 +231,14 @@ function updateFreeTimer() {
     }
 }
 
-// ---------- ОТОБРАЖЕНИЕ ШАНСОВ ----------
-function displayChances(isPaid) {
-    const table = isPaid ? PAID_CHANCES : FREE_CHANCES;
-    let html = '';
-    
-    for (let i = 0; i < table.values.length; i++) {
-        let className = 'chance-item';
-        if (table.values[i] === 250) className += ' jackpot';
-        if (table.values[i] === 100) className += ' highlight';
-        
-        html += `<div class="${className}">
-            <span>${table.values[i]} G</span>
-            <span>${table.probs[i]}%</span>
-        </div>`;
-    }
-    chancesList.innerHTML = html;
-}
-
 // ---------- ПОДПИСКИ ----------
 freeBtn.addEventListener('click', () => handleSpin(false));
 paidBtn.addEventListener('click', () => handleSpin(true));
 
-document.getElementById('tabFree').addEventListener('click', () => {
-    document.getElementById('tabFree').classList.add('active');
-    document.getElementById('tabPaid').classList.remove('active');
-    displayChances(false);
-});
-document.getElementById('tabPaid').addEventListener('click', () => {
-    document.getElementById('tabPaid').classList.add('active');
-    document.getElementById('tabFree').classList.remove('active');
-    displayChances(true);
-});
-
 // ---------- ИНИЦИАЛИЗАЦИЯ ----------
-displayChances(false);
 updateFreeTimer();
 paidBtn.disabled = balance < SPIN_COST;
-caseDisplay.innerText = '🎲';
+caseDisplay.innerText = '0';
 
 // Автосохранение
 setInterval(saveGame, 30000);
@@ -264,6 +246,6 @@ setInterval(updateFreeTimer, 60000);
 
 // Сохранение при выходе
 window.addEventListener('beforeunload', () => {
-    if (spinInterval) clearInterval(spinInterval);
+    if (animationInterval) clearInterval(animationInterval);
     saveGame();
 });
