@@ -1,11 +1,10 @@
 // ========================================
 //  STANDOFF 2 · КЕЙС-РУЛЕТКА
-//  ГИБРИДНОЕ ХРАНЕНИЕ (CLOUD + LOCALSTORAGE)
+//  ИСПРАВЛЕННАЯ ЗАГРУЗКА ДАННЫХ
 // ========================================
 
 const tg = window.Telegram?.WebApp;
 
-// ---------- ПРОВЕРКА ЗАПУСКА В TELEGRAM ----------
 if (!tg) {
     alert('Запустите приложение через Telegram!');
     throw new Error('Not in Telegram');
@@ -95,23 +94,39 @@ function showLoading(show) {
     }
 }
 
+// ---------- БЕЗОПАСНОЕ ПРЕОБРАЗОВАНИЕ В ЧИСЛО ----------
+function safeParseInt(value, defaultValue = 100) {
+    if (!value) return defaultValue;
+    const parsed = parseInt(value);
+    return isNaN(parsed) ? defaultValue : parsed;
+}
+
+function safeParseFloat(value, defaultValue = null) {
+    if (!value) return defaultValue;
+    const parsed = parseFloat(value);
+    return isNaN(parsed) ? defaultValue : parsed;
+}
+
 // ---------- ЗАГРУЗКА ИЗ CLOUD STORAGE ----------
 async function loadFromCloud() {
     try {
-        const balanceData = await tg.CloudStorage.getItem(STORAGE_KEYS.BALANCE);
-        const freeData = await tg.CloudStorage.getItem(STORAGE_KEYS.LAST_FREE);
+        // Запрашиваем оба значения одним вызовом
+        const result = await tg.CloudStorage.getItems([STORAGE_KEYS.BALANCE, STORAGE_KEYS.LAST_FREE]);
         
-        if (balanceData) {
-            balance = parseInt(balanceData);
-            console.log('✅ Загружено из облака: баланс =', balance);
+        if (result && result[STORAGE_KEYS.BALANCE] !== undefined) {
+            balance = safeParseInt(result[STORAGE_KEYS.BALANCE], 100);
+            console.log('✅ Баланс из облака:', balance);
         }
         
-        if (freeData) {
-            lastFreeSpin = parseInt(freeData);
-            console.log('✅ Загружено из облака: lastFree =', new Date(lastFreeSpin).toLocaleString());
+        if (result && result[STORAGE_KEYS.LAST_FREE] !== undefined) {
+            const freeValue = safeParseFloat(result[STORAGE_KEYS.LAST_FREE], null);
+            if (freeValue !== null) {
+                lastFreeSpin = freeValue;
+                console.log('✅ lastFree из облака:', new Date(lastFreeSpin).toLocaleString());
+            }
         }
         
-        return !!(balanceData || freeData);
+        return true;
     } catch(e) {
         console.warn('⚠️ Ошибка загрузки из облака:', e);
         return false;
@@ -125,16 +140,18 @@ function loadFromLocal() {
         const freeData = localStorage.getItem(STORAGE_KEYS.LAST_FREE);
         
         if (balanceData) {
-            balance = parseInt(balanceData);
-            console.log('✅ Загружено из localStorage: баланс =', balance);
+            balance = safeParseInt(balanceData, 100);
+            console.log('✅ Баланс из localStorage:', balance);
         }
         
         if (freeData) {
-            lastFreeSpin = parseInt(freeData);
-            console.log('✅ Загружено из localStorage: lastFree =', new Date(lastFreeSpin).toLocaleString());
+            lastFreeSpin = safeParseFloat(freeData, null);
+            if (lastFreeSpin !== null) {
+                console.log('✅ lastFree из localStorage:', new Date(lastFreeSpin).toLocaleString());
+            }
         }
         
-        return !!(balanceData || freeData);
+        return true;
     } catch(e) {
         console.warn('⚠️ Ошибка загрузки из localStorage:', e);
         return false;
@@ -145,21 +162,26 @@ function loadFromLocal() {
 async function loadGame() {
     showLoading(true);
     
-    // Сначала пробуем загрузить из облака
+    // Пробуем загрузить из облака
     const cloudSuccess = await loadFromCloud();
     
-    // Если облако не сработало, пробуем из localStorage
-    if (!cloudSuccess) {
-        const localSuccess = loadFromLocal();
-        if (!localSuccess) {
-            // Если ничего нет — первый запуск
-            balance = 100;
-            lastFreeSpin = null;
-            console.log('🆕 Первый запуск, баланс = 100');
-        }
+    // Если облако не сработало или данных нет, пробуем localStorage
+    if (!cloudSuccess || balance === 100 && !lastFreeSpin) {
+        loadFromLocal();
     }
     
-    // Обновляем UI
+    // Если после всего баланс не установлен или NaN, ставим 100
+    if (typeof balance !== 'number' || isNaN(balance) || balance < 0) {
+        balance = 100;
+        console.log('🆕 Установлен баланс по умолчанию: 100');
+    }
+    
+    // Проверяем lastFreeSpin на валидность
+    if (lastFreeSpin && (isNaN(lastFreeSpin) || lastFreeSpin > Date.now() + 86400000)) {
+        lastFreeSpin = null;
+        console.log('🆕 Сброс невалидного lastFreeSpin');
+    }
+    
     updateBalanceUI();
     updateFreeTimer();
     
@@ -169,12 +191,17 @@ async function loadGame() {
 // ---------- СОХРАНЕНИЕ В CLOUD ----------
 async function saveToCloud() {
     try {
-        await tg.CloudStorage.setItem(STORAGE_KEYS.BALANCE, balance.toString());
+        const items = {};
+        items[STORAGE_KEYS.BALANCE] = balance.toString();
+        
         if (lastFreeSpin) {
-            await tg.CloudStorage.setItem(STORAGE_KEYS.LAST_FREE, lastFreeSpin.toString());
+            items[STORAGE_KEYS.LAST_FREE] = lastFreeSpin.toString();
         } else {
-            await tg.CloudStorage.removeItem(STORAGE_KEYS.LAST_FREE);
+            // Если lastFreeSpin null, удаляем ключ
+            await tg.CloudStorage.removeItem(STORAGE_KEYS.LAST_FREE).catch(() => {});
         }
+        
+        await tg.CloudStorage.setItems(items);
         console.log('✅ Сохранено в облако');
         return true;
     } catch(e) {
@@ -202,7 +229,6 @@ function saveToLocal() {
 
 // ---------- ОСНОВНОЕ СОХРАНЕНИЕ ----------
 async function saveGame() {
-    // Сохраняем везде, где можно
     await saveToCloud();
     saveToLocal();
 }
@@ -288,7 +314,6 @@ function updateFreeTimer() {
     if (hoursPassed >= COOLDOWN_HOURS) {
         freeBtn.disabled = false;
         freeTimer.innerText = '24:00';
-        // Сбрасываем lastFreeSpin, но сохраняем это изменение
         lastFreeSpin = null;
         saveGame();
     } else {
@@ -313,7 +338,6 @@ async function handleSpin(isPaid) {
         return;
     }
 
-    // Проверка бесплатного спина
     if (!isPaid && lastFreeSpin) {
         const hoursPassed = (Date.now() - lastFreeSpin) / (1000 * 60 * 60);
         if (hoursPassed < COOLDOWN_HOURS) {
@@ -325,43 +349,35 @@ async function handleSpin(isPaid) {
         }
     }
 
-    // Проверка платного спина
     if (isPaid && balance < SPIN_COST) {
         tg.showAlert('❌ Недостаточно G!');
         return;
     }
 
-    // Блокируем кнопки
     isSpinning = true;
     freeBtn.disabled = true;
     paidBtn.disabled = true;
     resultEl.innerText = '';
 
-    // Списываем плату
     if (isPaid) {
         balance -= SPIN_COST;
         updateBalanceUI();
         await saveGame();
     }
 
-    // Выбираем выигрыш
     const winValue = getWinValue(isPaid);
     
-    // Анимация
     await startSmoothAnimation(winValue);
     
-    // Начисляем выигрыш
     balance += winValue;
     updateBalanceUI();
 
-    // Обновляем время бесплатного спина
     if (!isPaid) {
         lastFreeSpin = Date.now();
     }
 
     await saveGame();
 
-    // Показываем результат
     if (winValue >= 100) {
         resultEl.innerText = `🔥 ДЖЕКПОТ! +${winValue}G 🔥`;
         caseDisplay.classList.add('jackpot');
@@ -378,7 +394,6 @@ async function handleSpin(isPaid) {
         tg.HapticFeedback?.notificationOccurred('error');
     }
 
-    // Разблокировка
     isSpinning = false;
     updateFreeTimer();
     paidBtn.disabled = balance < SPIN_COST;
@@ -395,10 +410,7 @@ paidBtn.addEventListener('click', () => handleSpin(true));
     paidBtn.disabled = balance < SPIN_COST;
     caseDisplay.innerText = '0';
     
-    // Запускаем таймер
     timerInterval = setInterval(updateFreeTimer, 1000);
-    
-    // Автосохранение
     setInterval(saveGame, 30000);
 })();
 
