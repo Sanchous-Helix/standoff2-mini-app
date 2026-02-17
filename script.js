@@ -1,6 +1,6 @@
 // ========================================
 //  STANDOFF 2 · КЕЙС-РУЛЕТКА
-//  5 СЕКУНД, ПЛАВНАЯ СМЕНА ВСЕХ ЧИСЕЛ
+//  ШАНСЫ УМЕНЬШЕНЫ ПО ТВОЕЙ ПРОСЬБЕ
 // ========================================
 
 const tg = window.Telegram?.WebApp;
@@ -19,27 +19,27 @@ document.getElementById('username').innerText = user.first_name;
 document.getElementById('avatar').src = user.photo_url || 
     `https://ui-avatars.com/api/?name=${encodeURIComponent(user.first_name)}&background=ffd700&color=000&size=128`;
 
-// ---------- ШАНСЫ ----------
+// ---------- ШАНСЫ (ПЕРЕСЧИТАНЫ ПО ТВОЕЙ ПРОСЬБЕ) ----------
 const FREE_CHANCES = [
-    { value: 0, prob: 70.89 },
-    { value: 5, prob: 15 },
-    { value: 10, prob: 7.5 },
-    { value: 15, prob: 4 },
-    { value: 25, prob: 1.8 },
-    { value: 50, prob: 0.7 },
-    { value: 100, prob: 0.1 },
-    { value: 250, prob: 0.01 }
+    { value: 0, prob: 85.4745 },  // 85.47% (нулёвка)
+    { value: 5, prob: 7.5 },       // 7.5%
+    { value: 10, prob: 3.75 },     // 3.75%
+    { value: 15, prob: 2 },        // 2%
+    { value: 25, prob: 0.9 },      // 0.9%
+    { value: 50, prob: 0.35 },     // 0.35%
+    { value: 100, prob: 0.025 },   // 0.025%
+    { value: 250, prob: 0.0005 }   // 0.0005%
 ];
 
 const PAID_CHANCES = [
-    { value: 0, prob: 50 },
-    { value: 5, prob: 17.4 },
-    { value: 10, prob: 15 },
-    { value: 15, prob: 10 },
-    { value: 25, prob: 5 },
-    { value: 50, prob: 2 },
-    { value: 100, prob: 0.5 },
-    { value: 250, prob: 0.1 }
+    { value: 0, prob: 64.5745 },   // 64.57% (нулёвка)
+    { value: 5, prob: 17.4 },      // 17.4%
+    { value: 10, prob: 15 },       // 15%
+    { value: 15, prob: 10 },       // 10%
+    { value: 25, prob: 5 },        // 5%
+    { value: 50, prob: 2 },        // 2%
+    { value: 100, prob: 0.125 },   // 0.125% (было 0.5% ÷4)
+    { value: 250, prob: 0.005 }    // 0.005% (было 0.1% ÷20)
 ];
 
 // ---------- НАСТРОЙКИ ----------
@@ -47,8 +47,7 @@ const SPIN_COST = 10;
 const COOLDOWN_HOURS = 24;
 const ALLOWED_VALUES = [0, 5, 10, 15, 25, 50, 100, 250];
 const ANIMATION_DURATION = 5000; // 5 секунд
-const FRAME_RATE = 60; // 60 кадров в секунду для плавности
-const MAX_CHANGE_SPEED = 50; // Максимальная "скорость" изменения чисел
+const FRAME_RATE = 60; // 60 кадров в секунду
 
 // ---------- СОСТОЯНИЕ ----------
 let balance = 100;
@@ -85,7 +84,7 @@ function saveGame() {
     }));
 }
 
-// ---------- ВЫБОР ВЫИГРЫША ПО ШАНСАМ ----------
+// ---------- ВЫБОР ВЫИГРЫША ПО НОВЫМ ШАНСАМ ----------
 function getWinValue(isPaid) {
     const table = isPaid ? PAID_CHANCES : FREE_CHANCES;
     const rand = Math.random() * 100;
@@ -94,19 +93,19 @@ function getWinValue(isPaid) {
     for (let item of table) {
         cumulative += item.prob;
         if (rand < cumulative) {
+            console.log(`🎲 Выигрыш: ${item.value}G (шанс ${item.prob}%)`);
             return item.value;
         }
     }
     return 0;
 }
 
-// ---------- ГЕНЕРАЦИЯ СЛУЧАЙНОГО ЧИСЛА (НЕ ТОЛЬКО ИЗ СПИСКА) ----------
+// ---------- ГЕНЕРАЦИЯ СЛУЧАЙНОГО ЧИСЛА ДЛЯ АНИМАЦИИ ----------
 function getRandomRollerValue() {
-    // 70% шанс показать число из списка, 30% - случайное число для эффекта
+    // 70% шанс показать число из списка, 30% - случайное
     if (Math.random() < 0.7) {
         return ALLOWED_VALUES[Math.floor(Math.random() * ALLOWED_VALUES.length)];
     } else {
-        // Генерируем случайное число от 0 до 300
         return Math.floor(Math.random() * 301);
     }
 }
@@ -115,35 +114,27 @@ function getRandomRollerValue() {
 function startSmoothAnimation(finalValue) {
     return new Promise((resolve) => {
         const startTime = performance.now();
-        let lastValue = 0;
         
-        // Эффект свечения
         caseContainer.classList.add('spinning');
         
-        // Очищаем предыдущий интервал если был
         if (animationInterval) clearInterval(animationInterval);
         
         animationInterval = setInterval(() => {
             const elapsed = performance.now() - startTime;
             
             if (elapsed < ANIMATION_DURATION) {
-                // Показываем случайные числа для эффекта прокрутки
                 const randomValue = getRandomRollerValue();
                 caseDisplay.innerText = randomValue;
                 
-                // Плавное изменение яркости для эффекта
                 const progress = elapsed / ANIMATION_DURATION;
                 const opacity = 0.3 + Math.sin(progress * Math.PI * 10) * 0.4;
                 caseDisplay.style.opacity = opacity;
                 
-                // Эффект "размытия" при быстрой смене
                 const blurAmount = Math.sin(progress * Math.PI) * 5;
                 caseDisplay.style.textShadow = `0 0 ${blurAmount}px #ffd700`;
-                
             }
         }, 1000 / FRAME_RATE);
         
-        // Таймер окончания анимации
         if (spinTimeout) clearTimeout(spinTimeout);
         spinTimeout = setTimeout(() => {
             clearInterval(animationInterval);
@@ -188,7 +179,6 @@ async function handleSpin(isPaid) {
         return;
     }
 
-    // Проверка бесплатной крутки
     if (!isPaid && lastFreeSpin) {
         const hoursPassed = (Date.now() - lastFreeSpin) / (1000 * 60 * 60);
         if (hoursPassed < COOLDOWN_HOURS) {
@@ -197,42 +187,34 @@ async function handleSpin(isPaid) {
         }
     }
 
-    // Проверка платной крутки
     if (isPaid && balance < SPIN_COST) {
         tg?.showAlert?.('❌ Недостаточно G!');
         return;
     }
 
-    // Блокируем кнопки
     isSpinning = true;
     freeBtn.disabled = true;
     paidBtn.disabled = true;
     resultEl.innerText = '';
 
-    // Списываем плату
     if (isPaid) {
         balance -= SPIN_COST;
         balanceEl.innerText = balance;
     }
 
-    // Выбираем выигрыш ДО анимации
     const winValue = getWinValue(isPaid);
     
-    // Запускаем анимацию
     await startSmoothAnimation(winValue);
     
-    // Начисляем выигрыш
     balance += winValue;
     balanceEl.innerText = balance;
 
-    // Обновляем время бесплатной крутки
     if (!isPaid) {
         lastFreeSpin = Date.now();
     }
 
     saveGame();
 
-    // Показываем результат
     if (winValue >= 100) {
         resultEl.innerText = `🔥 ДЖЕКПОТ! +${winValue}G 🔥`;
         caseDisplay.classList.add('jackpot');
@@ -249,7 +231,6 @@ async function handleSpin(isPaid) {
         tg?.HapticFeedback?.notificationOccurred('error');
     }
 
-    // Разблокировка кнопок
     isSpinning = false;
     updateFreeTimer();
     paidBtn.disabled = balance < SPIN_COST;
@@ -264,11 +245,9 @@ updateFreeTimer();
 paidBtn.disabled = balance < SPIN_COST;
 caseDisplay.innerText = '0';
 
-// Обновление таймера каждую секунду
 setInterval(updateFreeTimer, 1000);
 setInterval(saveGame, 30000);
 
-// Сохранение при выходе
 window.addEventListener('beforeunload', () => {
     if (animationInterval) clearInterval(animationInterval);
     if (spinTimeout) clearTimeout(spinTimeout);
