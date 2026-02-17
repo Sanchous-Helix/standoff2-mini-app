@@ -1,10 +1,8 @@
 // ========================================
 //  STANDOFF 2 · КЕЙС-РУЛЕТКА
-//  ИСПРАВЛЕНО: КРУТКА ОСТАНАВЛИВАЕТСЯ,
-//  ТАЙМЕР РАБОТАЕТ
+//  5 СЕКУНД, ПЛАВНАЯ СМЕНА ВСЕХ ЧИСЕЛ
 // ========================================
 
-// ---------- Telegram ----------
 const tg = window.Telegram?.WebApp;
 if (tg) {
     tg.ready();
@@ -47,9 +45,10 @@ const PAID_CHANCES = [
 // ---------- НАСТРОЙКИ ----------
 const SPIN_COST = 10;
 const COOLDOWN_HOURS = 24;
-const VALUES = [0, 5, 10, 15, 25, 50, 100, 250];
-const ANIMATION_DURATION = 2000; // 2 секунды
-const FRAME_RATE = 30; // 30 кадров в секунду
+const ALLOWED_VALUES = [0, 5, 10, 15, 25, 50, 100, 250];
+const ANIMATION_DURATION = 5000; // 5 секунд
+const FRAME_RATE = 60; // 60 кадров в секунду для плавности
+const MAX_CHANGE_SPEED = 50; // Максимальная "скорость" изменения чисел
 
 // ---------- СОСТОЯНИЕ ----------
 let balance = 100;
@@ -95,17 +94,28 @@ function getWinValue(isPaid) {
     for (let item of table) {
         cumulative += item.prob;
         if (rand < cumulative) {
-            console.log(`Выигрыш: ${item.value}G`);
             return item.value;
         }
     }
     return 0;
 }
 
+// ---------- ГЕНЕРАЦИЯ СЛУЧАЙНОГО ЧИСЛА (НЕ ТОЛЬКО ИЗ СПИСКА) ----------
+function getRandomRollerValue() {
+    // 70% шанс показать число из списка, 30% - случайное число для эффекта
+    if (Math.random() < 0.7) {
+        return ALLOWED_VALUES[Math.floor(Math.random() * ALLOWED_VALUES.length)];
+    } else {
+        // Генерируем случайное число от 0 до 300
+        return Math.floor(Math.random() * 301);
+    }
+}
+
 // ---------- ПЛАВНАЯ АНИМАЦИЯ ----------
 function startSmoothAnimation(finalValue) {
     return new Promise((resolve) => {
         const startTime = performance.now();
+        let lastValue = 0;
         
         // Эффект свечения
         caseContainer.classList.add('spinning');
@@ -117,14 +127,19 @@ function startSmoothAnimation(finalValue) {
             const elapsed = performance.now() - startTime;
             
             if (elapsed < ANIMATION_DURATION) {
-                // Показываем случайные значения
-                const randomValue = VALUES[Math.floor(Math.random() * VALUES.length)];
+                // Показываем случайные числа для эффекта прокрутки
+                const randomValue = getRandomRollerValue();
                 caseDisplay.innerText = randomValue;
                 
-                // Плавное изменение яркости
+                // Плавное изменение яркости для эффекта
                 const progress = elapsed / ANIMATION_DURATION;
-                const opacity = 0.5 + Math.sin(progress * Math.PI * 8) * 0.5;
+                const opacity = 0.3 + Math.sin(progress * Math.PI * 10) * 0.4;
                 caseDisplay.style.opacity = opacity;
+                
+                // Эффект "размытия" при быстрой смене
+                const blurAmount = Math.sin(progress * Math.PI) * 5;
+                caseDisplay.style.textShadow = `0 0 ${blurAmount}px #ffd700`;
+                
             }
         }, 1000 / FRAME_RATE);
         
@@ -134,6 +149,7 @@ function startSmoothAnimation(finalValue) {
             clearInterval(animationInterval);
             caseContainer.classList.remove('spinning');
             caseDisplay.style.opacity = 1;
+            caseDisplay.style.textShadow = '0 0 30px #ffd700';
             caseDisplay.innerText = finalValue;
             resolve();
         }, ANIMATION_DURATION);
@@ -154,18 +170,14 @@ function updateFreeTimer() {
     if (hoursPassed >= COOLDOWN_HOURS) {
         freeBtn.disabled = false;
         freeTimer.innerText = '24:00';
+        lastFreeSpin = null;
+        saveGame();
     } else {
         freeBtn.disabled = true;
         const left = COOLDOWN_HOURS - hoursPassed;
         const h = Math.floor(left);
         const m = Math.floor((left - h) * 60);
-        const s = Math.floor(((left - h) * 60 - m) * 60);
-        
-        if (h > 0) {
-            freeTimer.innerText = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
-        } else {
-            freeTimer.innerText = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
-        }
+        freeTimer.innerText = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
     }
 }
 
@@ -222,12 +234,12 @@ async function handleSpin(isPaid) {
 
     // Показываем результат
     if (winValue >= 100) {
-        resultEl.innerText = `🔥 +${winValue}G 🔥`;
+        resultEl.innerText = `🔥 ДЖЕКПОТ! +${winValue}G 🔥`;
         caseDisplay.classList.add('jackpot');
         setTimeout(() => caseDisplay.classList.remove('jackpot'), 1500);
         tg?.HapticFeedback?.impactOccurred('heavy');
     } else if (winValue >= 50) {
-        resultEl.innerText = `⚡ +${winValue}G`;
+        resultEl.innerText = `⚡ +${winValue}G ⚡`;
         tg?.HapticFeedback?.impactOccurred('medium');
     } else if (winValue > 0) {
         resultEl.innerText = `🎉 +${winValue}G`;
