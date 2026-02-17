@@ -16,7 +16,7 @@
                 <div id="username" class="username">Загрузка...</div>
                 <div class="balance">
                     <span class="balance-label">💰</span>
-                    <span id="balance" class="balance-value">100</span>
+                    <span id="balance" class="balance-value">0</span>
                     <span class="currency">G</span>
                 </div>
             </div>
@@ -35,7 +35,7 @@
             <button id="freeSpinBtn" class="btn btn-free">
                 <span class="btn-icon">🎁</span>
                 <span class="btn-text">БЕСПЛАТНО</span>
-                <span id="freeTimer" class="timer">24:00</span>
+                <span id="freeTimer" class="timer">--:--</span>
             </button>
             <button id="paidSpinBtn" class="btn btn-paid">
                 <span class="btn-icon">⚡</span>
@@ -46,6 +46,9 @@
 
         <!-- Результат -->
         <div id="result" class="result-message"></div>
+        
+        <!-- Индикатор загрузки -->
+        <div id="loading" class="loading hidden">⏳ Загрузка...</div>
     </div>
     <script src="script.js"></script>
 </body>
