@@ -1,6 +1,6 @@
 // ========================================
 //  STANDOFF 2 · КЕЙС-РУЛЕТКА
-//  GITHUB PAGES + SQLite СЕРВЕР
+//  ФИНАЛЬНАЯ ВЕРСИЯ - РАБОТАЕТ С SQLite СЕРВЕРОМ
 // ========================================
 
 const tg = window.Telegram?.WebApp;
@@ -13,13 +13,10 @@ if (!tg) {
 tg.ready();
 tg.expand();
 
-// ---------- ВАЖНО: УКАЖИ АДРЕС ТВОЕГО СЕРВЕРА ----------
-// Если сервер на том же ПК для теста:
-const API_URL = 'http://localhost:5000/api';
-// Если сервер на VPS:
-// const API_URL = 'https://ваш-домен.ru/api';
-// Если используете ngrok/туннель:
-// const API_URL = 'https://ваш-туннель.ngrok.io/api';
+// ============ ВАЖНО: ВСТАВЬ СВОЙ URL ОТ TUNNEL ============
+// Получи его после запуска: lt --port 5000
+const API_URL = 'https://ТВОЙ-АДРЕС-ОТ-TUNNEL.loca.lt/api';
+// ==========================================================
 
 // ---------- ЭЛЕМЕНТЫ DOM ----------
 const loadingEl = document.getElementById('loading');
@@ -47,7 +44,7 @@ const userPhoto = user.photo_url;
 usernameEl.innerText = userName;
 avatarEl.src = userPhoto || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=ffd700&color=000&size=128`;
 
-// ---------- ШАНСЫ ----------
+// ---------- ШАНСЫ (ТВОИ ТОЧНЫЕ ЗНАЧЕНИЯ) ----------
 const FREE_CHANCES = [
     { value: 0, prob: 85.4745 },
     { value: 5, prob: 7.5 },
@@ -96,7 +93,7 @@ function showLoading(show) {
     }
 }
 
-// ---------- API ЗАПРОСЫ К ВАШЕМУ СЕРВЕРУ ----------
+// ---------- API ЗАПРОСЫ ----------
 async function apiRequest(endpoint, method = 'POST', data = {}) {
     try {
         const response = await fetch(`${API_URL}/${endpoint}`, {
@@ -106,7 +103,8 @@ async function apiRequest(endpoint, method = 'POST', data = {}) {
             },
             body: JSON.stringify({
                 userId: userId,
-                initData: tg.initData,
+                username: user.username,
+                firstName: user.first_name,
                 ...data
             })
         });
@@ -259,6 +257,7 @@ async function handleSpin(isPaid) {
         return;
     }
 
+    // Проверка бесплатного спина
     if (!isPaid && lastFreeSpin) {
         const hoursPassed = (Date.now() - lastFreeSpin) / (1000 * 60 * 60);
         if (hoursPassed < COOLDOWN_HOURS) {
@@ -270,6 +269,7 @@ async function handleSpin(isPaid) {
         }
     }
 
+    // Проверка баланса для платного спина
     if (isPaid && balance < SPIN_COST) {
         tg.showAlert('❌ Недостаточно G!');
         return;
@@ -280,8 +280,19 @@ async function handleSpin(isPaid) {
     paidBtn.disabled = true;
     resultEl.innerText = '';
 
+    // Сохраняем текущий баланс для отката в случае ошибки
+    const oldBalance = balance;
+    
+    // Если платный спин - сразу списываем
+    if (isPaid) {
+        balance -= SPIN_COST;
+        updateBalanceUI();
+    }
+
+    // Выбираем выигрыш
     const winValue = getWinValue(isPaid);
     
+    // Анимация
     await startSmoothAnimation(winValue);
     
     // Отправляем результат на сервер
@@ -291,22 +302,28 @@ async function handleSpin(isPaid) {
     });
     
     if (!result.error) {
+        // Успешно - обновляем баланс с сервера
         balance = result.newBalance;
         if (result.lastFreeSpin) {
             lastFreeSpin = new Date(result.lastFreeSpin);
         }
-        // Сохраняем локально как резерв
+        // Сохраняем локально
         localStorage.setItem(`balance_${userId}`, balance.toString());
     } else {
-        // Если сервер не отвечает, используем локальное обновление
-        if (isPaid) balance -= SPIN_COST;
-        balance += winValue;
-        if (!isPaid) lastFreeSpin = Date.now();
+        // Ошибка сервера - откатываем изменения
+        console.error('Ошибка сервера, используем локальное сохранение');
+        if (isPaid) {
+            balance = oldBalance - SPIN_COST + winValue;
+        } else {
+            balance = oldBalance + winValue;
+            lastFreeSpin = Date.now();
+        }
         localStorage.setItem(`balance_${userId}`, balance.toString());
     }
     
     updateBalanceUI();
 
+    // Показываем результат
     if (winValue >= 100) {
         resultEl.innerText = `🔥 ДЖЕКПОТ! +${winValue}G 🔥`;
         caseDisplay.classList.add('jackpot');
