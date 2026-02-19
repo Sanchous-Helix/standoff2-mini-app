@@ -1,6 +1,6 @@
 // ========================================
 //  STANDOFF 2 · КЕЙС-РУЛЕТКА
-//  ИСПРАВЛЕННАЯ ЗАГРУЗКА ДАННЫХ
+//  ПОДКЛЮЧЕНИЕ К SQLite СЕРВЕРУ
 // ========================================
 
 const tg = window.Telegram?.WebApp;
@@ -12,6 +12,10 @@ if (!tg) {
 
 tg.ready();
 tg.expand();
+
+// ---------- НАСТРОЙКИ ----------
+const API_URL = 'http://localhost:5000/api';  // Для локального теста
+// const API_URL = 'https://ваш-сервер.ru/api'; // Для продакшена
 
 // ---------- ЭЛЕМЕНТЫ DOM ----------
 const loadingEl = document.getElementById('loading');
@@ -32,7 +36,7 @@ if (!user) {
     throw new Error('No user data');
 }
 
-const userId = user.id.toString();
+const userId = user.id;
 const userName = user.first_name;
 const userPhoto = user.photo_url;
 
@@ -70,18 +74,12 @@ const ANIMATION_DURATION = 5000;
 const FRAME_RATE = 60;
 
 // ---------- СОСТОЯНИЕ ----------
-let balance = 100;
+let balance = 0;
 let lastFreeSpin = null;
 let isSpinning = false;
 let animationInterval = null;
 let spinTimeout = null;
 let timerInterval = null;
-
-// ---------- КЛЮЧИ ДЛЯ ХРАНЕНИЯ ----------
-const STORAGE_KEYS = {
-    BALANCE: `balance_${userId}`,
-    LAST_FREE: `lastFree_${userId}`
-};
 
 // ---------- ПОКАЗ/СКРЫТИЕ ЗАГРУЗКИ ----------
 function showLoading(show) {
@@ -94,143 +92,48 @@ function showLoading(show) {
     }
 }
 
-// ---------- БЕЗОПАСНОЕ ПРЕОБРАЗОВАНИЕ В ЧИСЛО ----------
-function safeParseInt(value, defaultValue = 100) {
-    if (!value) return defaultValue;
-    const parsed = parseInt(value);
-    return isNaN(parsed) ? defaultValue : parsed;
-}
-
-function safeParseFloat(value, defaultValue = null) {
-    if (!value) return defaultValue;
-    const parsed = parseFloat(value);
-    return isNaN(parsed) ? defaultValue : parsed;
-}
-
-// ---------- ЗАГРУЗКА ИЗ CLOUD STORAGE ----------
-async function loadFromCloud() {
+// ---------- API ЗАПРОСЫ К СЕРВЕРУ ----------
+async function apiRequest(endpoint, method = 'POST', data = {}) {
     try {
-        // Запрашиваем оба значения одним вызовом
-        const result = await tg.CloudStorage.getItems([STORAGE_KEYS.BALANCE, STORAGE_KEYS.LAST_FREE]);
+        const response = await fetch(`${API_URL}/${endpoint}`, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: userId,
+                initData: tg.initData,
+                ...data
+            })
+        });
         
-        if (result && result[STORAGE_KEYS.BALANCE] !== undefined) {
-            balance = safeParseInt(result[STORAGE_KEYS.BALANCE], 100);
-            console.log('✅ Баланс из облака:', balance);
-        }
-        
-        if (result && result[STORAGE_KEYS.LAST_FREE] !== undefined) {
-            const freeValue = safeParseFloat(result[STORAGE_KEYS.LAST_FREE], null);
-            if (freeValue !== null) {
-                lastFreeSpin = freeValue;
-                console.log('✅ lastFree из облака:', new Date(lastFreeSpin).toLocaleString());
-            }
-        }
-        
-        return true;
-    } catch(e) {
-        console.warn('⚠️ Ошибка загрузки из облака:', e);
-        return false;
+        return await response.json();
+    } catch (error) {
+        console.error(`API Error (${endpoint}):`, error);
+        return { error: 'Network error' };
     }
 }
 
-// ---------- ЗАГРУЗКА ИЗ LOCALSTORAGE ----------
-function loadFromLocal() {
-    try {
-        const balanceData = localStorage.getItem(STORAGE_KEYS.BALANCE);
-        const freeData = localStorage.getItem(STORAGE_KEYS.LAST_FREE);
-        
-        if (balanceData) {
-            balance = safeParseInt(balanceData, 100);
-            console.log('✅ Баланс из localStorage:', balance);
-        }
-        
-        if (freeData) {
-            lastFreeSpin = safeParseFloat(freeData, null);
-            if (lastFreeSpin !== null) {
-                console.log('✅ lastFree из localStorage:', new Date(lastFreeSpin).toLocaleString());
-            }
-        }
-        
-        return true;
-    } catch(e) {
-        console.warn('⚠️ Ошибка загрузки из localStorage:', e);
-        return false;
-    }
-}
-
-// ---------- ОСНОВНАЯ ЗАГРУЗКА ----------
-async function loadGame() {
+// ---------- ЗАГРУЗКА ПОЛЬЗОВАТЕЛЯ ----------
+async function loadUser() {
     showLoading(true);
     
-    // Пробуем загрузить из облака
-    const cloudSuccess = await loadFromCloud();
+    const data = await apiRequest('user');
     
-    // Если облако не сработало или данных нет, пробуем localStorage
-    if (!cloudSuccess || balance === 100 && !lastFreeSpin) {
-        loadFromLocal();
-    }
-    
-    // Если после всего баланс не установлен или NaN, ставим 100
-    if (typeof balance !== 'number' || isNaN(balance) || balance < 0) {
+    if (data.error) {
+        console.error('Ошибка загрузки пользователя:', data.error);
         balance = 100;
-        console.log('🆕 Установлен баланс по умолчанию: 100');
-    }
-    
-    // Проверяем lastFreeSpin на валидность
-    if (lastFreeSpin && (isNaN(lastFreeSpin) || lastFreeSpin > Date.now() + 86400000)) {
         lastFreeSpin = null;
-        console.log('🆕 Сброс невалидного lastFreeSpin');
+    } else {
+        balance = data.balance || 100;
+        lastFreeSpin = data.lastFreeSpin ? new Date(data.lastFreeSpin) : null;
+        console.log('✅ Данные загружены:', balance, lastFreeSpin);
     }
     
     updateBalanceUI();
     updateFreeTimer();
     
     showLoading(false);
-}
-
-// ---------- СОХРАНЕНИЕ В CLOUD ----------
-async function saveToCloud() {
-    try {
-        const items = {};
-        items[STORAGE_KEYS.BALANCE] = balance.toString();
-        
-        if (lastFreeSpin) {
-            items[STORAGE_KEYS.LAST_FREE] = lastFreeSpin.toString();
-        } else {
-            // Если lastFreeSpin null, удаляем ключ
-            await tg.CloudStorage.removeItem(STORAGE_KEYS.LAST_FREE).catch(() => {});
-        }
-        
-        await tg.CloudStorage.setItems(items);
-        console.log('✅ Сохранено в облако');
-        return true;
-    } catch(e) {
-        console.warn('⚠️ Ошибка сохранения в облако:', e);
-        return false;
-    }
-}
-
-// ---------- СОХРАНЕНИЕ В LOCALSTORAGE ----------
-function saveToLocal() {
-    try {
-        localStorage.setItem(STORAGE_KEYS.BALANCE, balance.toString());
-        if (lastFreeSpin) {
-            localStorage.setItem(STORAGE_KEYS.LAST_FREE, lastFreeSpin.toString());
-        } else {
-            localStorage.removeItem(STORAGE_KEYS.LAST_FREE);
-        }
-        console.log('✅ Сохранено в localStorage');
-        return true;
-    } catch(e) {
-        console.warn('⚠️ Ошибка сохранения в localStorage:', e);
-        return false;
-    }
-}
-
-// ---------- ОСНОВНОЕ СОХРАНЕНИЕ ----------
-async function saveGame() {
-    await saveToCloud();
-    saveToLocal();
 }
 
 // ---------- ОБНОВЛЕНИЕ BALANCE UI ----------
@@ -315,7 +218,6 @@ function updateFreeTimer() {
         freeBtn.disabled = false;
         freeTimer.innerText = '24:00';
         lastFreeSpin = null;
-        saveGame();
     } else {
         freeBtn.disabled = true;
         const left = COOLDOWN_HOURS - hoursPassed;
@@ -359,24 +261,24 @@ async function handleSpin(isPaid) {
     paidBtn.disabled = true;
     resultEl.innerText = '';
 
-    if (isPaid) {
-        balance -= SPIN_COST;
-        updateBalanceUI();
-        await saveGame();
-    }
-
     const winValue = getWinValue(isPaid);
     
     await startSmoothAnimation(winValue);
     
-    balance += winValue;
-    updateBalanceUI();
-
-    if (!isPaid) {
-        lastFreeSpin = Date.now();
+    // Отправляем результат на сервер
+    const result = await apiRequest('spin', 'POST', {
+        spinType: isPaid ? 'paid' : 'free',
+        winAmount: winValue
+    });
+    
+    if (!result.error) {
+        balance = result.newBalance;
+        if (result.lastFreeSpin) {
+            lastFreeSpin = new Date(result.lastFreeSpin);
+        }
     }
-
-    await saveGame();
+    
+    updateBalanceUI();
 
     if (winValue >= 100) {
         resultEl.innerText = `🔥 ДЖЕКПОТ! +${winValue}G 🔥`;
@@ -399,19 +301,29 @@ async function handleSpin(isPaid) {
     paidBtn.disabled = balance < SPIN_COST;
 }
 
+// ---------- ПРОВЕРКА РЕФЕРАЛЬНОЙ ССЫЛКИ ----------
+function checkReferral() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const ref = urlParams.get('ref');
+    
+    if (ref) {
+        apiRequest('referral', 'POST', { referrerId: parseInt(ref) });
+    }
+}
+
 // ---------- ПОДПИСКИ ----------
 freeBtn.addEventListener('click', () => handleSpin(false));
 paidBtn.addEventListener('click', () => handleSpin(true));
 
 // ---------- ИНИЦИАЛИЗАЦИЯ ----------
 (async function init() {
-    await loadGame();
+    await loadUser();
+    checkReferral();
     updateFreeTimer();
     paidBtn.disabled = balance < SPIN_COST;
     caseDisplay.innerText = '0';
     
     timerInterval = setInterval(updateFreeTimer, 1000);
-    setInterval(saveGame, 30000);
 })();
 
 // ---------- ОЧИСТКА ----------
@@ -419,5 +331,4 @@ window.addEventListener('beforeunload', () => {
     if (animationInterval) clearInterval(animationInterval);
     if (spinTimeout) clearTimeout(spinTimeout);
     if (timerInterval) clearInterval(timerInterval);
-    saveGame();
 });
