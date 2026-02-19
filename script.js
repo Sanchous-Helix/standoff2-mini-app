@@ -14,7 +14,7 @@ tg.ready();
 tg.expand();
 
 // ============ ТВОЙ РАБОЧИЙ URL ============
-const API_BASE = 'https://deep-grapes-laugh.loca.lt';
+const API_BASE = 'https://icy-carrots-sip.loca.lt';
 // ===========================================
 
 // ---------- ЭЛЕМЕНТЫ DOM ----------
