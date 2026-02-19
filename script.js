@@ -1,6 +1,6 @@
 // ========================================
 //  STANDOFF 2 · КЕЙС-РУЛЕТКА
-//  ФИНАЛЬНАЯ ВЕРСИЯ - РАБОТАЕТ С SQLite СЕРВЕРОМ
+//  ИСПРАВЛЕННАЯ ВЕРСИЯ - РАБОТАЕТ С ТУННЕЛЕМ
 // ========================================
 
 const tg = window.Telegram?.WebApp;
@@ -13,10 +13,9 @@ if (!tg) {
 tg.ready();
 tg.expand();
 
-// ============ ВАЖНО: ВСТАВЬ СВОЙ URL ОТ TUNNEL ============
-// Получи его после запуска: lt --port 5000
-const API_URL = 'https://new-wings-enter.loca.lt';
-// ==========================================================
+// ============ ТВОЙ РАБОЧИЙ URL ============
+const API_BASE = 'https://new-wings-enter.loca.lt';
+// ===========================================
 
 // ---------- ЭЛЕМЕНТЫ DOM ----------
 const loadingEl = document.getElementById('loading');
@@ -44,7 +43,7 @@ const userPhoto = user.photo_url;
 usernameEl.innerText = userName;
 avatarEl.src = userPhoto || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=ffd700&color=000&size=128`;
 
-// ---------- ШАНСЫ (ТВОИ ТОЧНЫЕ ЗНАЧЕНИЯ) ----------
+// ---------- ШАНСЫ ----------
 const FREE_CHANCES = [
     { value: 0, prob: 85.4745 },
     { value: 5, prob: 7.5 },
@@ -93,10 +92,10 @@ function showLoading(show) {
     }
 }
 
-// ---------- API ЗАПРОСЫ ----------
+// ---------- API ЗАПРОСЫ (ИСПРАВЛЕНО) ----------
 async function apiRequest(endpoint, method = 'POST', data = {}) {
     try {
-        const response = await fetch(`${API_URL}/${endpoint}`, {
+        const response = await fetch(`${API_BASE}/${endpoint}`, {
             method: method,
             headers: {
                 'Content-Type': 'application/json',
@@ -125,11 +124,10 @@ async function loadUser() {
     showLoading(true);
     
     try {
-        const data = await apiRequest('user');
+        const data = await apiRequest('api/user');
         
         if (data.error) {
             console.error('Ошибка загрузки пользователя:', data.error);
-            // Используем локальное хранилище как запасной вариант
             const localBalance = localStorage.getItem(`balance_${userId}`);
             balance = localBalance ? parseInt(localBalance) : 100;
             lastFreeSpin = null;
@@ -137,13 +135,10 @@ async function loadUser() {
             balance = data.balance || 100;
             lastFreeSpin = data.lastFreeSpin ? new Date(data.lastFreeSpin) : null;
             console.log('✅ Данные загружены с сервера:', balance);
-            
-            // Сохраняем локально как резерв
             localStorage.setItem(`balance_${userId}`, balance.toString());
         }
     } catch (error) {
         console.error('❌ Ошибка загрузки:', error);
-        // Fallback на localStorage
         const localBalance = localStorage.getItem(`balance_${userId}`);
         balance = localBalance ? parseInt(localBalance) : 100;
     }
@@ -257,7 +252,6 @@ async function handleSpin(isPaid) {
         return;
     }
 
-    // Проверка бесплатного спина
     if (!isPaid && lastFreeSpin) {
         const hoursPassed = (Date.now() - lastFreeSpin) / (1000 * 60 * 60);
         if (hoursPassed < COOLDOWN_HOURS) {
@@ -269,7 +263,6 @@ async function handleSpin(isPaid) {
         }
     }
 
-    // Проверка баланса для платного спина
     if (isPaid && balance < SPIN_COST) {
         tg.showAlert('❌ Недостаточно G!');
         return;
@@ -280,37 +273,29 @@ async function handleSpin(isPaid) {
     paidBtn.disabled = true;
     resultEl.innerText = '';
 
-    // Сохраняем текущий баланс для отката в случае ошибки
     const oldBalance = balance;
     
-    // Если платный спин - сразу списываем
     if (isPaid) {
         balance -= SPIN_COST;
         updateBalanceUI();
     }
 
-    // Выбираем выигрыш
     const winValue = getWinValue(isPaid);
     
-    // Анимация
     await startSmoothAnimation(winValue);
     
-    // Отправляем результат на сервер
-    const result = await apiRequest('spin', 'POST', {
+    const result = await apiRequest('api/spin', 'POST', {
         spinType: isPaid ? 'paid' : 'free',
         winAmount: winValue
     });
     
     if (!result.error) {
-        // Успешно - обновляем баланс с сервера
         balance = result.newBalance;
         if (result.lastFreeSpin) {
             lastFreeSpin = new Date(result.lastFreeSpin);
         }
-        // Сохраняем локально
         localStorage.setItem(`balance_${userId}`, balance.toString());
     } else {
-        // Ошибка сервера - откатываем изменения
         console.error('Ошибка сервера, используем локальное сохранение');
         if (isPaid) {
             balance = oldBalance - SPIN_COST + winValue;
@@ -323,7 +308,6 @@ async function handleSpin(isPaid) {
     
     updateBalanceUI();
 
-    // Показываем результат
     if (winValue >= 100) {
         resultEl.innerText = `🔥 ДЖЕКПОТ! +${winValue}G 🔥`;
         caseDisplay.classList.add('jackpot');
@@ -345,16 +329,6 @@ async function handleSpin(isPaid) {
     paidBtn.disabled = balance < SPIN_COST;
 }
 
-// ---------- ПРОВЕРКА РЕФЕРАЛЬНОЙ ССЫЛКИ ----------
-function checkReferral() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const ref = urlParams.get('ref');
-    
-    if (ref) {
-        apiRequest('referral', 'POST', { referrerId: parseInt(ref) });
-    }
-}
-
 // ---------- ПОДПИСКИ ----------
 freeBtn.addEventListener('click', () => handleSpin(false));
 paidBtn.addEventListener('click', () => handleSpin(true));
@@ -362,18 +336,26 @@ paidBtn.addEventListener('click', () => handleSpin(true));
 // ---------- ИНИЦИАЛИЗАЦИЯ ----------
 (async function init() {
     await loadUser();
-    checkReferral();
     updateFreeTimer();
     paidBtn.disabled = balance < SPIN_COST;
     caseDisplay.innerText = '0';
     
     timerInterval = setInterval(updateFreeTimer, 1000);
     
-    // Проверка соединения с сервером
     try {
-        const response = await fetch(API_URL.replace('/api', ''));
+        const response = await fetch(API_BASE);
         if (response.ok) {
             console.log('✅ Соединение с сервером установлено');
+        } else if (response.status === 511) {
+            console.log('⚠️ Требуется активация туннеля - открой ссылку в браузере');
+            // Показываем уведомление пользователю
+            tg.showPopup({
+                title: '⚠️ Требуется активация',
+                message: 'Открой ссылку в браузере для активации туннеля',
+                buttons: [{ type: 'default', text: 'Открыть' }]
+            }, () => {
+                window.open(API_BASE, '_blank');
+            });
         }
     } catch (error) {
         console.warn('⚠️ Сервер не доступен, работаем в офлайн режиме');
