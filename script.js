@@ -14,7 +14,7 @@ tg.ready();
 tg.expand();
 
 // ============ ТВОЙ РАБОЧИЙ URL ============
-const API_BASE = 'https://khaki-planes-smell.loca.lt';
+const API_BASE = 'https://deep-grapes-laugh.loca.lt';
 // ===========================================
 
 // ---------- ЭЛЕМЕНТЫ DOM ----------
