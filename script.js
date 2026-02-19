@@ -1,6 +1,6 @@
 // ========================================
 //  STANDOFF 2 · КЕЙС-РУЛЕТКА
-//  ПОДКЛЮЧЕНИЕ К SQLite СЕРВЕРУ
+//  GITHUB PAGES + SQLite СЕРВЕР
 // ========================================
 
 const tg = window.Telegram?.WebApp;
@@ -13,9 +13,13 @@ if (!tg) {
 tg.ready();
 tg.expand();
 
-// ---------- НАСТРОЙКИ ----------
-const API_URL = 'http://localhost:5000/api';  // Для локального теста
-// const API_URL = 'https://ваш-сервер.ru/api'; // Для продакшена
+// ---------- ВАЖНО: УКАЖИ АДРЕС ТВОЕГО СЕРВЕРА ----------
+// Если сервер на том же ПК для теста:
+const API_URL = 'http://localhost:5000/api';
+// Если сервер на VPS:
+// const API_URL = 'https://ваш-домен.ru/api';
+// Если используете ngrok/туннель:
+// const API_URL = 'https://ваш-туннель.ngrok.io/api';
 
 // ---------- ЭЛЕМЕНТЫ DOM ----------
 const loadingEl = document.getElementById('loading');
@@ -92,7 +96,7 @@ function showLoading(show) {
     }
 }
 
-// ---------- API ЗАПРОСЫ К СЕРВЕРУ ----------
+// ---------- API ЗАПРОСЫ К ВАШЕМУ СЕРВЕРУ ----------
 async function apiRequest(endpoint, method = 'POST', data = {}) {
     try {
         const response = await fetch(`${API_URL}/${endpoint}`, {
@@ -107,10 +111,14 @@ async function apiRequest(endpoint, method = 'POST', data = {}) {
             })
         });
         
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         return await response.json();
     } catch (error) {
-        console.error(`API Error (${endpoint}):`, error);
-        return { error: 'Network error' };
+        console.error(`❌ API Error (${endpoint}):`, error);
+        return { error: error.message };
     }
 }
 
@@ -118,21 +126,32 @@ async function apiRequest(endpoint, method = 'POST', data = {}) {
 async function loadUser() {
     showLoading(true);
     
-    const data = await apiRequest('user');
-    
-    if (data.error) {
-        console.error('Ошибка загрузки пользователя:', data.error);
-        balance = 100;
-        lastFreeSpin = null;
-    } else {
-        balance = data.balance || 100;
-        lastFreeSpin = data.lastFreeSpin ? new Date(data.lastFreeSpin) : null;
-        console.log('✅ Данные загружены:', balance, lastFreeSpin);
+    try {
+        const data = await apiRequest('user');
+        
+        if (data.error) {
+            console.error('Ошибка загрузки пользователя:', data.error);
+            // Используем локальное хранилище как запасной вариант
+            const localBalance = localStorage.getItem(`balance_${userId}`);
+            balance = localBalance ? parseInt(localBalance) : 100;
+            lastFreeSpin = null;
+        } else {
+            balance = data.balance || 100;
+            lastFreeSpin = data.lastFreeSpin ? new Date(data.lastFreeSpin) : null;
+            console.log('✅ Данные загружены с сервера:', balance);
+            
+            // Сохраняем локально как резерв
+            localStorage.setItem(`balance_${userId}`, balance.toString());
+        }
+    } catch (error) {
+        console.error('❌ Ошибка загрузки:', error);
+        // Fallback на localStorage
+        const localBalance = localStorage.getItem(`balance_${userId}`);
+        balance = localBalance ? parseInt(localBalance) : 100;
     }
     
     updateBalanceUI();
     updateFreeTimer();
-    
     showLoading(false);
 }
 
@@ -276,6 +295,14 @@ async function handleSpin(isPaid) {
         if (result.lastFreeSpin) {
             lastFreeSpin = new Date(result.lastFreeSpin);
         }
+        // Сохраняем локально как резерв
+        localStorage.setItem(`balance_${userId}`, balance.toString());
+    } else {
+        // Если сервер не отвечает, используем локальное обновление
+        if (isPaid) balance -= SPIN_COST;
+        balance += winValue;
+        if (!isPaid) lastFreeSpin = Date.now();
+        localStorage.setItem(`balance_${userId}`, balance.toString());
     }
     
     updateBalanceUI();
@@ -324,6 +351,16 @@ paidBtn.addEventListener('click', () => handleSpin(true));
     caseDisplay.innerText = '0';
     
     timerInterval = setInterval(updateFreeTimer, 1000);
+    
+    // Проверка соединения с сервером
+    try {
+        const response = await fetch(API_URL.replace('/api', ''));
+        if (response.ok) {
+            console.log('✅ Соединение с сервером установлено');
+        }
+    } catch (error) {
+        console.warn('⚠️ Сервер не доступен, работаем в офлайн режиме');
+    }
 })();
 
 // ---------- ОЧИСТКА ----------
