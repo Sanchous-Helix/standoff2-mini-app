@@ -14,7 +14,7 @@ tg.ready();
 tg.expand();
 
 // ============ ТВОЙ РАБОЧИЙ URL ============
-const API_BASE = 'https://puny-jars-rule.loca.lt';
+const API_BASE = 'https://standoff2.loca.lt';
 // ===========================================
 
 // ---------- ЭЛЕМЕНТЫ DOM ----------
