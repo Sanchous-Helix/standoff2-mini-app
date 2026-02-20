@@ -14,7 +14,7 @@ tg.ready();
 tg.expand();
 
 // ============ ТВОЙ РАБОЧИЙ URL ============
-const API_BASE = 'https://icy-carrots-sip.loca.lt';
+const API_BASE = 'https://full-sites-fry.loca.lt';
 // ===========================================
 
 // ---------- ЭЛЕМЕНТЫ DOM ----------
