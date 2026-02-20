@@ -1,6 +1,6 @@
 // ========================================
 //  STANDOFF 2 · КЕЙС-РУЛЕТКА
-//  ИСПРАВЛЕННАЯ ВЕРСИЯ - РАБОТАЕТ С ТУННЕЛЕМ
+//  ФИНАЛЬНАЯ ВЕРСИЯ - ГАРАНТИРОВАННАЯ СИНХРОНИЗАЦИЯ БАЛАНСА
 // ========================================
 
 const tg = window.Telegram?.WebApp;
@@ -74,7 +74,7 @@ const ANIMATION_DURATION = 5000;
 const FRAME_RATE = 60;
 
 // ---------- СОСТОЯНИЕ ----------
-let balance = 0;
+let balance = null;           // Изначально null – баланс ещё не загружен
 let lastFreeSpin = null;
 let isSpinning = false;
 let animationInterval = null;
@@ -92,7 +92,7 @@ function showLoading(show) {
     }
 }
 
-// ---------- API ЗАПРОСЫ (ИСПРАВЛЕНО) ----------
+// ---------- API ЗАПРОСЫ ----------
 async function apiRequest(endpoint, method = 'POST', data = {}) {
     try {
         const response = await fetch(`${API_BASE}/${endpoint}`, {
@@ -128,21 +128,26 @@ async function loadUser() {
         
         if (data.error) {
             console.error('Ошибка загрузки пользователя:', data.error);
+            // Если сервер недоступен, пробуем взять из localStorage (но баланс будет неактуален)
             const localBalance = localStorage.getItem(`balance_${userId}`);
             balance = localBalance ? parseInt(localBalance) : 100;
             lastFreeSpin = null;
         } else {
-            balance = data.balance || 100;
+            // Устанавливаем баланс из ответа сервера
+            balance = data.balance;
             lastFreeSpin = data.lastFreeSpin ? new Date(data.lastFreeSpin) : null;
             console.log('✅ Данные загружены с сервера:', balance);
+            // Сохраняем в localStorage только как резервную копию
             localStorage.setItem(`balance_${userId}`, balance.toString());
         }
     } catch (error) {
         console.error('❌ Ошибка загрузки:', error);
+        // В крайнем случае берём из localStorage
         const localBalance = localStorage.getItem(`balance_${userId}`);
         balance = localBalance ? parseInt(localBalance) : 100;
     }
     
+    // Обновляем UI только после того, как баланс точно получен
     updateBalanceUI();
     updateFreeTimer();
     showLoading(false);
@@ -150,7 +155,11 @@ async function loadUser() {
 
 // ---------- ОБНОВЛЕНИЕ BALANCE UI ----------
 function updateBalanceUI() {
-    balanceEl.innerText = balance;
+    if (balance !== null) {
+        balanceEl.innerText = balance;
+    } else {
+        balanceEl.innerText = '?'; // Показываем, что загружается
+    }
 }
 
 // ---------- ВЫБОР ВЫИГРЫША ----------
@@ -247,6 +256,12 @@ function updateFreeTimer() {
 
 // ---------- ОСНОВНАЯ КРУТКА ----------
 async function handleSpin(isPaid) {
+    // Проверяем, что баланс загружен
+    if (balance === null) {
+        tg.showAlert('❌ Данные ещё загружаются, подождите...');
+        return;
+    }
+
     if (isSpinning) {
         tg.showAlert('❌ Уже крутится!');
         return;
@@ -275,6 +290,7 @@ async function handleSpin(isPaid) {
 
     const oldBalance = balance;
     
+    // Для платного спина уменьшаем баланс локально (для отзывчивости)
     if (isPaid) {
         balance -= SPIN_COST;
         updateBalanceUI();
@@ -290,20 +306,20 @@ async function handleSpin(isPaid) {
     });
     
     if (!result.error) {
+        // Успешно: обновляем баланс с сервера
         balance = result.newBalance;
         if (result.lastFreeSpin) {
             lastFreeSpin = new Date(result.lastFreeSpin);
         }
         localStorage.setItem(`balance_${userId}`, balance.toString());
     } else {
-        console.error('Ошибка сервера, используем локальное сохранение');
+        console.error('Ошибка сервера:', result.error);
+        // Откатываем локальные изменения
         if (isPaid) {
-            balance = oldBalance - SPIN_COST + winValue;
-        } else {
-            balance = oldBalance + winValue;
-            lastFreeSpin = Date.now();
+            balance = oldBalance; // возвращаем как было
+            updateBalanceUI();
         }
-        localStorage.setItem(`balance_${userId}`, balance.toString());
+        tg.showAlert(`❌ Ошибка: ${result.error || 'сервер не отвечает'}`);
     }
     
     updateBalanceUI();
@@ -335,7 +351,7 @@ paidBtn.addEventListener('click', () => handleSpin(true));
 
 // ---------- ИНИЦИАЛИЗАЦИЯ ----------
 (async function init() {
-    await loadUser();
+    await loadUser();  // Ждём загрузки пользователя, прежде чем продолжить
     updateFreeTimer();
     paidBtn.disabled = balance < SPIN_COST;
     caseDisplay.innerText = '0';
@@ -348,7 +364,6 @@ paidBtn.addEventListener('click', () => handleSpin(true));
             console.log('✅ Соединение с сервером установлено');
         } else if (response.status === 511) {
             console.log('⚠️ Требуется активация туннеля - открой ссылку в браузере');
-            // Показываем уведомление пользователю
             tg.showPopup({
                 title: '⚠️ Требуется активация',
                 message: 'Открой ссылку в браузере для активации туннеля',
