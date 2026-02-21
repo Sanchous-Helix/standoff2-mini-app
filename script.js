@@ -1,6 +1,6 @@
 // ========================================
 //  STANDOFF 2 · КЕЙС-РУЛЕТКА
-//  ФИНАЛЬНАЯ ВЕРСИЯ - ГАРАНТИРОВАННАЯ СИНХРОНИЗАЦИЯ БАЛАНСА
+//  БЕЗОПАСНАЯ ВЕРСИЯ – ВЫИГРЫШ ПРИХОДИТ С СЕРВЕРА
 // ========================================
 
 const tg = window.Telegram?.WebApp;
@@ -43,29 +43,6 @@ const userPhoto = user.photo_url;
 usernameEl.innerText = userName;
 avatarEl.src = userPhoto || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=ffd700&color=000&size=128`;
 
-// ---------- ШАНСЫ ----------
-const FREE_CHANCES = [
-    { value: 0, prob: 85.4745 },
-    { value: 5, prob: 7.5 },
-    { value: 10, prob: 3.75 },
-    { value: 15, prob: 2 },
-    { value: 25, prob: 0.9 },
-    { value: 50, prob: 0.35 },
-    { value: 100, prob: 0.025 },
-    { value: 250, prob: 0.0005 }
-];
-
-const PAID_CHANCES = [
-    { value: 0, prob: 64.5745 },
-    { value: 5, prob: 17.4 },
-    { value: 10, prob: 15 },
-    { value: 15, prob: 10 },
-    { value: 25, prob: 5 },
-    { value: 50, prob: 2 },
-    { value: 100, prob: 0.125 },
-    { value: 250, prob: 0.005 }
-];
-
 // ---------- НАСТРОЙКИ ----------
 const SPIN_COST = 10;
 const COOLDOWN_HOURS = 24;
@@ -74,7 +51,7 @@ const ANIMATION_DURATION = 5000;
 const FRAME_RATE = 60;
 
 // ---------- СОСТОЯНИЕ ----------
-let balance = null;           // Изначально null – баланс ещё не загружен
+let balance = null;
 let lastFreeSpin = null;
 let isSpinning = false;
 let animationInterval = null;
@@ -92,7 +69,7 @@ function showLoading(show) {
     }
 }
 
-// ---------- API ЗАПРОСЫ ----------
+// ---------- API ЗАПРОСЫ (С initData) ----------
 async function apiRequest(endpoint, method = 'POST', data = {}) {
     try {
         const response = await fetch(`${API_BASE}/${endpoint}`, {
@@ -104,6 +81,7 @@ async function apiRequest(endpoint, method = 'POST', data = {}) {
                 userId: userId,
                 username: user.username,
                 firstName: user.first_name,
+                initData: tg.initData,  // отправляем подпись
                 ...data
             })
         });
@@ -128,70 +106,34 @@ async function loadUser() {
         
         if (data.error) {
             console.error('Ошибка загрузки пользователя:', data.error);
-            // Если сервер недоступен, пробуем взять из localStorage (но баланс будет неактуален)
             const localBalance = localStorage.getItem(`balance_${userId}`);
             balance = localBalance ? parseInt(localBalance) : 100;
             lastFreeSpin = null;
         } else {
-            // Устанавливаем баланс из ответа сервера
             balance = data.balance;
             lastFreeSpin = data.lastFreeSpin ? new Date(data.lastFreeSpin) : null;
             console.log('✅ Данные загружены с сервера:', balance);
-            // Сохраняем в localStorage только как резервную копию
             localStorage.setItem(`balance_${userId}`, balance.toString());
         }
     } catch (error) {
         console.error('❌ Ошибка загрузки:', error);
-        // В крайнем случае берём из localStorage
         const localBalance = localStorage.getItem(`balance_${userId}`);
         balance = localBalance ? parseInt(localBalance) : 100;
     }
     
-    // Обновляем UI только после того, как баланс точно получен
     updateBalanceUI();
     updateFreeTimer();
     showLoading(false);
 }
 
-// ---------- ОБНОВЛЕНИЕ BALANCE UI ----------
 function updateBalanceUI() {
-    if (balance !== null) {
-        balanceEl.innerText = balance;
-    } else {
-        balanceEl.innerText = '?'; // Показываем, что загружается
-    }
+    balanceEl.innerText = balance !== null ? balance : '?';
 }
 
-// ---------- ВЫБОР ВЫИГРЫША ----------
-function getWinValue(isPaid) {
-    const table = isPaid ? PAID_CHANCES : FREE_CHANCES;
-    const rand = Math.random() * 100;
-    let cumulative = 0;
-    
-    for (let item of table) {
-        cumulative += item.prob;
-        if (rand < cumulative) {
-            console.log(`🎲 Выигрыш: ${item.value}G (шанс ${item.prob}%)`);
-            return item.value;
-        }
-    }
-    return 0;
-}
-
-// ---------- ГЕНЕРАЦИЯ СЛУЧАЙНОГО ЧИСЛА ----------
-function getRandomRollerValue() {
-    if (Math.random() < 0.7) {
-        return ALLOWED_VALUES[Math.floor(Math.random() * ALLOWED_VALUES.length)];
-    } else {
-        return Math.floor(Math.random() * 301);
-    }
-}
-
-// ---------- АНИМАЦИЯ ----------
+// ---------- АНИМАЦИЯ (без предопределённого финала) ----------
 function startSmoothAnimation(finalValue) {
     return new Promise((resolve) => {
         const startTime = performance.now();
-        
         caseContainer.classList.add('spinning');
         
         if (animationInterval) clearInterval(animationInterval);
@@ -200,15 +142,16 @@ function startSmoothAnimation(finalValue) {
             const elapsed = performance.now() - startTime;
             
             if (elapsed < ANIMATION_DURATION) {
-                const randomValue = getRandomRollerValue();
+                // Случайное число из допустимых или случайное (эффект)
+                const randomValue = Math.random() < 0.7
+                    ? ALLOWED_VALUES[Math.floor(Math.random() * ALLOWED_VALUES.length)]
+                    : Math.floor(Math.random() * 301);
                 caseDisplay.innerText = randomValue;
                 
                 const progress = elapsed / ANIMATION_DURATION;
                 const opacity = 0.3 + Math.sin(progress * Math.PI * 10) * 0.4;
                 caseDisplay.style.opacity = opacity;
-                
-                const blurAmount = Math.sin(progress * Math.PI) * 5;
-                caseDisplay.style.textShadow = `0 0 ${blurAmount}px #ffd700`;
+                caseDisplay.style.textShadow = `0 0 ${Math.sin(progress * Math.PI) * 5}px #ffd700`;
             }
         }, 1000 / FRAME_RATE);
         
@@ -256,17 +199,14 @@ function updateFreeTimer() {
 
 // ---------- ОСНОВНАЯ КРУТКА ----------
 async function handleSpin(isPaid) {
-    // Проверяем, что баланс загружен
     if (balance === null) {
         tg.showAlert('❌ Данные ещё загружаются, подождите...');
         return;
     }
-
     if (isSpinning) {
         tg.showAlert('❌ Уже крутится!');
         return;
     }
-
     if (!isPaid && lastFreeSpin) {
         const hoursPassed = (Date.now() - lastFreeSpin) / (1000 * 60 * 60);
         if (hoursPassed < COOLDOWN_HOURS) {
@@ -277,7 +217,6 @@ async function handleSpin(isPaid) {
             return;
         }
     }
-
     if (isPaid && balance < SPIN_COST) {
         tg.showAlert('❌ Недостаточно G!');
         return;
@@ -288,42 +227,35 @@ async function handleSpin(isPaid) {
     paidBtn.disabled = true;
     resultEl.innerText = '';
 
-    const oldBalance = balance;
-    
-    // Для платного спина уменьшаем баланс локально (для отзывчивости)
-    if (isPaid) {
-        balance -= SPIN_COST;
-        updateBalanceUI();
+    // Отправляем запрос на сервер (он сам выберет выигрыш)
+    const result = await apiRequest('api/spin', 'POST', {
+        spinType: isPaid ? 'paid' : 'free'
+        // winAmount не передаём – сервер сам генерирует
+    });
+
+    if (result.error) {
+        console.error('Ошибка сервера:', result.error);
+        tg.showAlert(`❌ Ошибка: ${result.error}`);
+        isSpinning = false;
+        updateFreeTimer();
+        paidBtn.disabled = balance < SPIN_COST;
+        return;
     }
 
-    const winValue = getWinValue(isPaid);
+    const winValue = result.winAmount;
     
+    // Запускаем анимацию с полученным выигрышем
     await startSmoothAnimation(winValue);
     
-    const result = await apiRequest('api/spin', 'POST', {
-        spinType: isPaid ? 'paid' : 'free',
-        winAmount: winValue
-    });
-    
-    if (!result.error) {
-        // Успешно: обновляем баланс с сервера
-        balance = result.newBalance;
-        if (result.lastFreeSpin) {
-            lastFreeSpin = new Date(result.lastFreeSpin);
-        }
-        localStorage.setItem(`balance_${userId}`, balance.toString());
-    } else {
-        console.error('Ошибка сервера:', result.error);
-        // Откатываем локальные изменения
-        if (isPaid) {
-            balance = oldBalance; // возвращаем как было
-            updateBalanceUI();
-        }
-        tg.showAlert(`❌ Ошибка: ${result.error || 'сервер не отвечает'}`);
+    // Обновляем баланс и lastFreeSpin из ответа сервера
+    balance = result.newBalance;
+    if (result.lastFreeSpin) {
+        lastFreeSpin = new Date(result.lastFreeSpin);
     }
-    
+    localStorage.setItem(`balance_${userId}`, balance.toString());
     updateBalanceUI();
 
+    // Показываем результат
     if (winValue >= 100) {
         resultEl.innerText = `🔥 ДЖЕКПОТ! +${winValue}G 🔥`;
         caseDisplay.classList.add('jackpot');
@@ -351,7 +283,7 @@ paidBtn.addEventListener('click', () => handleSpin(true));
 
 // ---------- ИНИЦИАЛИЗАЦИЯ ----------
 (async function init() {
-    await loadUser();  // Ждём загрузки пользователя, прежде чем продолжить
+    await loadUser();
     updateFreeTimer();
     paidBtn.disabled = balance < SPIN_COST;
     caseDisplay.innerText = '0';
@@ -363,14 +295,12 @@ paidBtn.addEventListener('click', () => handleSpin(true));
         if (response.ok) {
             console.log('✅ Соединение с сервером установлено');
         } else if (response.status === 511) {
-            console.log('⚠️ Требуется активация туннеля - открой ссылку в браузере');
+            console.log('⚠️ Требуется активация туннеля');
             tg.showPopup({
                 title: '⚠️ Требуется активация',
                 message: 'Открой ссылку в браузере для активации туннеля',
                 buttons: [{ type: 'default', text: 'Открыть' }]
-            }, () => {
-                window.open(API_BASE, '_blank');
-            });
+            }, () => window.open(API_BASE, '_blank'));
         }
     } catch (error) {
         console.warn('⚠️ Сервер не доступен, работаем в офлайн режиме');
